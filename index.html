@@ -3,99 +3,64 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>親真会 - オーディオライブラリ</title>
+    <title>親真会 - 自動ライブラリ</title>
     <style>
-        /* 全体の基本スタイル */
-        body {
-            font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
-            background-color: #f5f7fa;
-            color: #333;
-            margin: 0;
-            padding: 20px;
-            line-height: 1.6;
-        }
-
-        h1 {
-            text-align: center;
-            color: #2c3e50;
-            margin-bottom: 40px;
-            font-size: 2rem;
-        }
-
-        /* プレイリストを囲むコンテナ */
-        .playlist-container {
-            max-width: 800px;
-            margin: 0 auto;
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-        }
-
-        /* 各曲のカードスタイル */
-        .audio-card {
-            background: #fff;
-            padding: 20px;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            transition: transform 0.2s;
-        }
-
-        .audio-card:hover {
-            transform: translateY(-5px);
-        }
-
-        .audio-title {
-            font-weight: bold;
-            margin-bottom: 15px;
-            font-size: 1.1rem;
-            color: #444;
-            text-align: center;
-        }
-
-        /* オーディオプレイヤーの幅を調整 */
-        audio {
-            width: 100%;
-            max-width: 400px;
-        }
-
-        /* レスポンシブ対応：画面が広い場合は2列にする */
-        @media (min-width: 600px) {
-            .playlist-container {
-                display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            }
-        }
+        /* スタイルは前回のものを継承 */
+        body { font-family: sans-serif; background: #f5f7fa; padding: 20px; }
+        .playlist-container { max-width: 800px; margin: 0 auto; display: grid; gap: 20px; }
+        .audio-card { background: #fff; padding: 20px; border-radius: 12px; shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .audio-title { font-weight: bold; margin-bottom: 10px; text-align: center; }
+        audio { width: 100%; }
+        .lyrics-text { margin-top: 10px; padding: 15px; background: #fafafa; white-space: pre-wrap; font-size: 0.9rem; border-radius: 5px; }
+        summary { cursor: pointer; color: #007bff; text-align: center; list-style: none; margin-top: 10px;}
     </style>
 </head>
 <body>
 
     <h1>親真会</h1>
+    <div id="playlist" class="playlist-container"></div>
 
-    <div class="playlist-container">
-        <div class="audio-card">
-            <div class="audio-title">阪田安正「春の風が吹いた日に」</div>
-            <audio src="musics/阪田安正「春の風が吹いた日に」.mp3" controls>
-                お使いのブラウザは audio 要素をサポートしていません。
-            </audio>
-        </div>
+    <script>
+        // ★ 曲名（ファイル名）をここに追加するだけ！
+        const songTitles = [
+            "阪田安正「春の風が吹いた日に」",
+            "多木敏子「上り坂　下り坂　まさかの坂」",
+            "笹川ことえ「思慕」"
+        ];
 
-        <div class="audio-card">
-            <div class="audio-title">多木敏子「上り坂 下り坂 まさかの坂」</div>
-            <audio src="musics/多木敏子「上り坂　下り坂　まさかの坂」.mp3" controls>
-                お使いのブラウザは audio 要素をサポートしていません。
-            </audio>
-        </div>
+        const container = document.getElementById('playlist');
 
-        <div class="audio-card">
-            <div class="audio-title">笹川ことえ「思慕」</div>
-            <audio src="musics/笹川ことえ「思慕」.mp3" controls>
-                お使いのブラウザは audio 要素をサポートしていません。
-            </audio>
-        </div>
-    </div>
+        async function loadPlaylist() {
+            for (const title of songTitles) {
+                const card = document.createElement('div');
+                card.className = 'audio-card';
+                
+                // 歌詞ファイルを読み込む（非同期処理）
+                let lyrics = "歌詞を読み込み中...";
+                try {
+                    const response = await fetch(`musics/${title}.txt`);
+                    if (response.ok) {
+                        lyrics = await response.text();
+                    } else {
+                        lyrics = "歌詞ファイルが見つかりません。";
+                    }
+                } catch (e) {
+                    lyrics = "読み込みエラー（サーバー経由で開いてください）";
+                }
 
+                card.innerHTML = `
+                    <div class="audio-title">${title}</div>
+                    <audio src="musics/${title}.mp3" controls></audio>
+                    <details>
+                        <summary>歌詞を表示する</summary>
+                        <div class="lyrics-text">${lyrics}</div>
+                    </details>
+                `;
+                container.appendChild(card);
+            }
+        }
+
+        loadPlaylist();
+    </script>
 </body>
 </html>
