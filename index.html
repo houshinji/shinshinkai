@@ -13,7 +13,7 @@
             /* 紫からゴールドに変更 */
             --accent-color: #d4af37; 
             --border-color: #443c24; /* 枠線も少し金色寄りに */
-			--title-border: white;
+			--title-border: #333333;
         }
 
         body {
@@ -29,10 +29,10 @@
 			color: #d4af37;
 			/* 上下左右に影を配置して縁取りを作る */
 			text-shadow: 
-				0.5px 0.5px 0 var(--title-border),
-			   -0.5px 0.5px 0 var(--title-border),
-				0.5px -0.5px 0 var(--title-border),
-			   -0.5px -0.5px 0 var(--title-border),
+				2px 2px 0 var(--title-border),
+			   -2px 2px 0 var(--title-border),
+				2px -2px 0 var(--title-border),
+			   -2px -2px 0 var(--title-border),
 				0px 2px 4px rgba(0,0,0,0.5); /* 最後に全体の影を入れて浮かせる */
 			
 			margin-bottom: 40px;
