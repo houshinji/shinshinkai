@@ -1,153 +1,36 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>親真会歌プロジェクト</title>
-    <style>
-        :root {
-            --bg-color: #121212;
-            --card-bg: #1e1e1e;
-            --text-main: #e0e0e0;
-            --text-sub: #b0b0b0;
-            /* 紫からゴールドに変更 */
-            --accent-color: #d4af37; 
-            --border-color: #443c24; /* 枠線も少し金色寄りに */
-			--title-border: #333333;
-        }
-
-        body {
-            font-family: "Helvetica Neue", Arial, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-main);
-            margin: 0;
-            padding: 20px;
-        }
-
-		h1 {
-			text-align: center;
-			color: #d4af37;
-			/* 上下左右に影を配置して縁取りを作る */
-			text-shadow: 
-				2px 2px 0 var(--title-border),
-			   -2px 2px 0 var(--title-border),
-				2px -2px 0 var(--title-border),
-			   -2px -2px 0 var(--title-border),
-				0px 2px 4px rgba(0,0,0,0.5); /* 最後に全体の影を入れて浮かせる */
-			
-			margin-bottom: 40px;
-			font-weight: bold;
-			letter-spacing: 0.1em;
-		}
-
-        .playlist-container {
-            max-width: 800px;
-            margin: 0 auto;
-            display: flex;
-            flex-direction: column;
-            gap: 30px;
-        }
-
-        /* フェードインのための初期状態 */
-        .audio-card {
-            background: var(--card-bg);
-            padding: 20px;
-            border-radius: 16px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.6);
-            border: 1px solid var(--border-color);
-            
-            /* 初期は透明で下に少しずらしておく */
-            opacity: 0;
-            transform: translateY(30px);
-            transition: opacity 0.8s ease-out, transform 0.8s ease-out;
-        }
-
-        /* スクロールして表示された時の状態 */
-        .audio-card.visible {
-            opacity: 1;
-            transform: translateY(0);
-        }
-
-        .audio-title {
-            font-weight: bold;
-            margin-bottom: 15px;
-            text-align: center;
-            letter-spacing: 1px;
-        }
-
-        audio {
-            width: 100%;
-            /* ゴールドに合わせてフィルターを調整（少し暖色系に） */
-            filter: invert(85%) sepia(20%) saturate(1000%) hue-rotate(10deg);
-            opacity: 0.9;
-        }
-
-        details {
-            margin-top: 15px;
-            border-top: 1px solid var(--border-color);
-            padding-top: 15px;
-        }
-
-        summary {
-            cursor: pointer;
-            color: var(--accent-color);
-            text-align: center;
-            list-style: none;
-            font-size: 0.9rem;
-            font-weight: 500;
-        }
-
-        .lyrics-text {
-            margin-top: 15px;
-            padding: 15px;
-            background: #252525;
-            border-radius: 8px;
-            font-size: 0.95rem;
-            line-height: 1.8;
-            color: var(--text-sub);
-            white-space: pre-wrap;
-            text-align: left;
-        }
-    </style>
-</head>
+    </head>
 <body>
 
     <h1>親真会 歌集</h1>
     <div id="playlist" class="playlist-container"></div>
 
     <script>
-        const songTitles = [
-            "阪田安正「空の向こうへ」",
-            "多木敏子「重なる命」",
-            "笹川ことえ「思慕」",
-            "可可欠「ABC」",
-            "可可欠「AABA」",
-        ];
-
         const container = document.getElementById('playlist');
 
         // 交差監視（スクロール検知）の設定
         const observerOptions = {
             root: null,
             rootMargin: "0px",
-            threshold: 0.1 // 10%見えたら発火
+            threshold: 0.1
         };
 
         const observer = new IntersectionObserver((entries, observer) => {
             entries.forEach(entry => {
                 if (entry.isIntersecting) {
                     entry.target.classList.add('visible');
-                    // 一度表示されたら監視を解除（何度もフェードインさせない場合）
                     observer.unobserve(entry.target);
                 }
             });
         }, observerOptions);
 
+        // --- 個別のカード生成関数 ---
         async function createCard(title) {
             const card = document.createElement('div');
             card.className = 'audio-card';
             
-            // カードの枠組みを先に作成（高速化のため）
             card.innerHTML = `
                 <div class="audio-title">${title}</div>
                 <audio src="musics/${title}.mp3" controls preload="none"></audio>
@@ -158,18 +41,16 @@
             `;
 
             container.appendChild(card);
-            observer.observe(card); // 監視開始
+            observer.observe(card);
 
-            // 歌詞の非同期取得
             try {
                 const response = await fetch(`musics/${title}.txt`);
-                const lyrics = response.ok ? await response.text() : "歌詞ファイルが見てつかりません。";
+                const lyrics = response.ok ? await response.text() : "歌詞ファイルが見つかりません。";
                 card.querySelector('.lyrics-text').textContent = lyrics;
             } catch (e) {
                 card.querySelector('.lyrics-text').textContent = "サーバー環境で実行してください。";
             }
 
-            // ラベル切り替え
             const details = card.querySelector('.lyrics-details');
             const summary = card.querySelector('.lyrics-summary');
             details.addEventListener('toggle', () => {
@@ -177,8 +58,29 @@
             });
         }
 
-        // 初期ロード
-        songTitles.forEach(title => createCard(title));
+        // --- 追加：テキストファイルから曲名を読み込む関数 ---
+        async function init() {
+            try {
+                // songlist.txt を読み込み
+                const response = await fetch('songlist.txt');
+                if (!response.ok) throw new Error('曲リストが見つかりません');
+                
+                const text = await response.text();
+                
+                // 改行で分割し、空行を除去して配列化
+                const songTitles = text.split(/\r?\n/).filter(line => line.trim() !== "");
+
+                // 配列を元にカードを生成
+                songTitles.forEach(title => createCard(title));
+
+            } catch (error) {
+                console.error('エラー:', error);
+                container.innerHTML = `<p style="text-align:center;">曲リストの読み込みに失敗しました。</p>`;
+            }
+        }
+
+        // 実行
+        init();
     </script>
 </body>
 </html>
