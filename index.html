@@ -1,8 +1,328 @@
-<html>
-  <head>
-    <title>親真会</title>
-  </head>
-  <body>
-    <p>親真会</p>
-  </body>
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+	<!--2026/3/26 13:29-->
+	<link rel="icon" href="favicon.svg" type="image/svg+xml">
+	<link rel="manifest" href="manifest.json">
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>親真会 歌集</title>
+	<style>
+		/* 元の CSS をそのまま継承 */
+		* { box-sizing: border-box; }
+		:root {
+			--bg-color: #121212;
+			--card-bg: #1e1e1e;
+			--text-main: #e0e0e0;
+			--text-sub: #b0b0b0;
+			--accent-color: #d4af37;
+			--border-color: #443c24;
+			--title-border: #333333;
+		}
+
+		body {
+			font-family: "Helvetica Neue", Arial, sans-serif;
+			background-color: var(--bg-color);
+			color: var(--text-main);
+			margin: 0;
+			padding: 20px 20px 90px;
+		}
+
+		h1 {
+			text-align: center;
+			color: #d4af37;
+			text-shadow: 2px 2px 0 var(--title-border), -2px 2px 0 var(--title-border), 2px -2px 0 var(--title-border), -2px -2px 0 var(--title-border), 0px 2px 4px rgba(0,0,0,0.5);
+			margin-bottom: 40px;
+			font-weight: bold;
+			letter-spacing: 0.1em;
+		}
+
+		.playlist-container {
+			max-width: 800px;
+			margin: 0 auto;
+			display: flex;
+			flex-direction: column;
+			gap: 30px;
+		}
+
+		.audio-card {
+			background: var(--card-bg);
+			padding: 20px;
+			border-radius: 16px;
+			box-shadow: 0 10px 25px rgba(0,0,0,0.6);
+			border: 1px solid var(--border-color);
+			opacity: 0;
+			transform: translateY(30px);
+			transition: opacity 0.8s ease-out, transform 0.8s ease-out;
+		}
+
+		.audio-card.visible { opacity: 1; transform: translateY(0); }
+
+		.audio-title { font-weight: bold; margin-bottom: 15px; text-align: center; letter-spacing: 1px; }
+
+		audio {
+			width: 100%;
+			filter: invert(85%) sepia(20%) saturate(1000%) hue-rotate(10deg);
+			opacity: 0.9;
+		}
+
+		details { margin-top: 15px; border-top: 1px solid var(--border-color); padding-top: 15px; }
+		summary { cursor: pointer; color: var(--accent-color); text-align: center; list-style: none; font-size: 0.9rem; font-weight: 500; }
+
+		.lyrics-text {
+			margin-top: 15px; padding: 15px; background: #252525; border-radius: 8px; font-size: 0.95rem; line-height: 1.8; color: var(--text-sub); white-space: pre-wrap; text-align: left;
+		}
+
+		#install-button-container {
+			position: static; display: none; flex-direction: column; align-items: center; justify-content: center; margin-top: 40px; margin-bottom: 40px; animation: slideUp 0.3s ease-out;
+		}
+
+		@keyframes slideUp { from { transform: translateY(100px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+		#install-btn {
+			background: linear-gradient(135deg, #d4af37 0%, #f4d03f 100%);
+			color: #000; border: none; padding: 12px 30px; border-radius: 25px; font-weight: bold; font-size: 1rem; cursor: pointer; box-shadow: 0 4px 15px rgba(212, 175, 55, 0.4); transition: all 0.3s ease; max-width: 300px;
+		}
+
+		.install-description { margin-top: 10px; font-size: 0.85rem; color: var(--text-sub); text-align: center; line-height: 1.6; max-width: 300px; }
+
+		.footer-note {
+			width: 100%;
+			padding: 15px 20px;
+			background: rgba(18, 18, 18, 0.9);
+			border-top: 1px solid var(--border-color);
+			text-align: center;
+			font-size: 0.85rem;
+			color: var(--text-sub);
+			margin-top: 40px;
+		}
+
+		@media (max-width: 600px) {
+			body { padding: 20px 12px 90px; }
+			.playlist-container { gap: 20px; }
+			.footer-note {
+				padding: 12px 14px;
+				font-size: 0.78rem;
+			}
+		}
+		.status-message { max-width: 800px; margin: 0 auto 20px auto; text-align: center; color: var(--text-sub); font-size: 0.9rem; min-height: 1.4em; }
+	</style>
+</head>
+<body>
+	<h1>親真会 歌集</h1>
+	<div id="status-message" class="status-message"></div>
+	<div id="playlist" class="playlist-container"></div>
+
+	<div id="install-button-container">
+		<button id="install-btn">アプリ(PWA)としてインストール</button>
+		<div class="install-description">
+			インストールすると、いつでもホーム画面からすぐに開けます。
+		</div>
+	</div>
+
+	<div class="footer-note">
+		一度再生した曲や表示した歌詞は保存され、通信費を使わず再生できます。
+	</div>
+
+	<script src="https://cdn.jsdelivr.net/npm/dexie@4/dist/dexie.min.js"></script>
+	<script>
+		let deferredPrompt = null;
+		let swRegistration = null;
+		let persistRequested = false;
+		const activeObjectUrls = new Map();
+		const cacheJobs = new Map();
+
+		const container = document.getElementById('playlist');
+		const installContainer = document.getElementById('install-button-container');
+		const installBtn = document.getElementById('install-btn');
+		const statusMessage = document.getElementById('status-message');
+		const db = window.Dexie ? new Dexie('shinshinkai-audio-db') : null;
+		if (db) db.version(1).stores({ tracks: 'id,updatedAt' });
+
+		function setStatus(message) { statusMessage.textContent = message || ''; }
+		function getTrackPath(title) { return `musics/${encodeURIComponent(title)}.mp3`; }
+
+		async function requestPersistentStorage() {
+			if (persistRequested) return;
+			persistRequested = true;
+			try {
+				if (navigator.storage?.persist) await navigator.storage.persist();
+			} catch (e) { console.warn('persist request failed', e); }
+		}
+
+		function setAudioToBlob(audioElement, trackId, blob) {
+			const oldUrl = activeObjectUrls.get(trackId);
+			if (oldUrl) URL.revokeObjectURL(oldUrl);
+			const blobUrl = URL.createObjectURL(blob);
+			activeObjectUrls.set(trackId, blobUrl);
+
+			const wasPaused = audioElement.paused;
+			const currentTime = audioElement.currentTime || 0;
+			audioElement.src = blobUrl;
+			audioElement.dataset.cached = 'true';
+			try { if (currentTime > 0) audioElement.currentTime = currentTime; } catch {}
+			if (!wasPaused) audioElement.play().catch(() => {});
+		}
+
+		async function applyCachedTrackIfExists(title, audioElement) {
+			if (!db) return;
+			try {
+				const trackId = getTrackPath(title);
+				const saved = await db.tracks.get(trackId);
+				if (saved?.blob) setAudioToBlob(audioElement, trackId, saved.blob);
+			} catch (e) { console.warn('read from idb failed', e); }
+		}
+
+		async function cacheTrackInBackground(title, audioElement) {
+			if (!db) return;
+			const trackId = getTrackPath(title);
+			if (cacheJobs.has(trackId)) return cacheJobs.get(trackId);
+
+			const job = (async () => {
+				const existing = await db.tracks.get(trackId);
+				if (existing?.blob) {
+					if (audioElement.dataset.cached !== 'true') setAudioToBlob(audioElement, trackId, existing.blob);
+					return;
+				}
+				setStatus('再生中の曲を端末に保存しています...');
+				try {
+					const response = await fetch(trackId, { cache: 'no-store' });
+					if (!response.ok) throw new Error(`download failed: ${response.status}`);
+					const blob = await response.blob();
+					await db.tracks.put({
+						id: trackId,
+						title,
+						blob,
+						mime: blob.type,
+						size: blob.size,
+						updatedAt: Date.now()
+					});
+					setAudioToBlob(audioElement, trackId, blob);
+				} catch (e) {
+					console.error('background cache failed', e);
+				} finally {
+					setStatus('');
+				}
+			})()
+			.finally(() => cacheJobs.delete(trackId));
+
+			cacheJobs.set(trackId, job);
+			return job;
+		}
+
+		const observer = new IntersectionObserver((entries) => {
+			entries.forEach(entry => { if (entry.isIntersecting) entry.target.classList.add('visible'); });
+		}, { threshold: 0.1 });
+
+		function parseSongList(text) { return text.split(/\r?\n/).map(line => line.trim()).filter(Boolean); }
+
+		async function syncIndexedDbWithSongList(titles) {
+			if (!db) return;
+			try {
+				const validTrackIds = new Set(titles.map(getTrackPath));
+				await db.transaction('rw', db.tracks, async () => {
+					const savedTrackIds = await db.tracks.toCollection().primaryKeys();
+					const staleTrackIds = savedTrackIds.filter(trackId => !validTrackIds.has(trackId));
+					if (staleTrackIds.length) await db.tracks.bulkDelete(staleTrackIds);
+				});
+			} catch (e) {
+				console.warn('idb sync failed', e);
+			}
+		}
+
+		async function loadLyrics(title, lyricsTextElement) {
+			const lyricsPath = `musics/${encodeURIComponent(title)}.txt`;
+			try {
+				const response = await fetch(lyricsPath);
+				lyricsTextElement.textContent = response.ok ? await response.text() : '歌詞ファイルが見つかりません。';
+			} catch { lyricsTextElement.textContent = '歌詞を読み込めませんでした。'; }
+		}
+
+		function createCard(title) {
+			const card = document.createElement('div');
+			card.className = 'audio-card';
+			card.innerHTML = `
+				<div class="audio-title">${title}</div>
+				<audio controls preload="none" src="musics/${encodeURIComponent(title)}.mp3"></audio>
+				<details class="lyrics-details">
+					<summary class="lyrics-summary">歌詞を表示する</summary>
+					<div class="lyrics-text" data-loaded="false"></div>
+				</details>
+			`;
+			const details = card.querySelector('.lyrics-details');
+			const summary = card.querySelector('.lyrics-summary');
+			const lyricsText = card.querySelector('.lyrics-text');
+			const audio = card.querySelector('audio');
+
+			audio.addEventListener('play', () => {
+				requestPersistentStorage();
+				cacheTrackInBackground(title, audio);
+			});
+			applyCachedTrackIfExists(title, audio);
+
+			details.addEventListener('toggle', async () => {
+				summary.textContent = details.open ? '歌詞を隠す' : '歌詞を表示する';
+				if (details.open && lyricsText.dataset.loaded !== 'true') {
+					lyricsText.textContent = '読み込み中...';
+					await loadLyrics(title, lyricsText);
+					lyricsText.dataset.loaded = 'true';
+				}
+			});
+			container.appendChild(card);
+			observer.observe(card);
+		}
+
+		async function loadSongList() {
+			// 古い ObjectURL を解放してメモリリークを防ぐ
+			activeObjectUrls.forEach(url => URL.revokeObjectURL(url));
+			activeObjectUrls.clear();
+
+			container.innerHTML = '';
+			try {
+				const response = await fetch('musics/index.html');
+				if (!response.ok) throw new Error('曲リストが見つかりません。');
+				const titles = parseSongList(await response.text());
+				await syncIndexedDbWithSongList(titles);
+				titles.length ? titles.forEach(createCard) : container.innerHTML = '<div>曲がありません。</div>';
+			} catch (e) { container.innerHTML = `<div style="color:red;">${e.message}</div>`; }
+		}
+
+		async function registerServiceWorkerAndInit() {
+			if ('serviceWorker' in navigator) {
+				try {
+					swRegistration = await navigator.serviceWorker.register('sw.js');
+					await navigator.serviceWorker.ready;
+					if (navigator.onLine) {
+						setStatus('更新を確認しています...');
+						const controller = navigator.serviceWorker.controller || swRegistration.active;
+						if (controller) controller.postMessage({ type: 'SYNC_MUSICS' });
+						setStatus('');
+					}
+				} catch (e) { console.error(e); }
+			}
+			await loadSongList();
+		}
+
+		window.addEventListener('beforeinstallprompt', (e) => {
+			e.preventDefault();
+			deferredPrompt = e;
+			installContainer.style.display = 'flex';
+		});
+
+		installBtn.addEventListener('click', async () => {
+			if (!deferredPrompt) return;
+			deferredPrompt.prompt();
+			const { outcome } = await deferredPrompt.userChoice;
+			if (outcome === 'accepted') { deferredPrompt = null; installContainer.style.display = 'none'; }
+		});
+
+		window.addEventListener('load', registerServiceWorkerAndInit);
+		window.addEventListener('online', () => { setStatus(''); loadSongList(); });
+		window.addEventListener('offline', () => setStatus('オフラインで動作中です。'));
+		window.addEventListener('beforeunload', () => {
+			activeObjectUrls.forEach(url => URL.revokeObjectURL(url));
+			activeObjectUrls.clear();
+		});
+	</script>
+</body>
 </html>
