@@ -168,7 +168,7 @@
         // songlist.txtから曲名リストを取得
         async function loadSongList() {
             try {
-                const response = await fetch('songlist.txt');
+                const response = await fetch('musics/index.html');
                 if (!response.ok) throw new Error('songlist.txt が見つかりません。');
                 
                 const text = await response.text();
