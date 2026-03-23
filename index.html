@@ -10,8 +10,9 @@
             --card-bg: #1e1e1e;
             --text-main: #e0e0e0;
             --text-sub: #b0b0b0;
-            --accent-color: #bb86fc;
-            --border-color: #333;
+            /* 紫からゴールドに変更 */
+            --accent-color: #d4af37; 
+            --border-color: #443c24; /* 枠線も少し金色寄りに */
         }
 
         body {
@@ -22,41 +23,55 @@
             padding: 20px;
         }
 
-        /* h1を確実に中央揃えに */
         h1 {
             text-align: center;
             color: var(--accent-color);
             margin-bottom: 40px;
             display: block;
             width: 100%;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
         }
 
         .playlist-container {
             max-width: 800px;
             margin: 0 auto;
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
         }
 
+        /* フェードインのための初期状態 */
         .audio-card {
             background: var(--card-bg);
             padding: 20px;
             border-radius: 16px;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.6);
             border: 1px solid var(--border-color);
+            
+            /* 初期は透明で下に少しずらしておく */
+            opacity: 0;
+            transform: translateY(30px);
+            transition: opacity 0.8s ease-out, transform 0.8s ease-out;
+        }
+
+        /* スクロールして表示された時の状態 */
+        .audio-card.visible {
+            opacity: 1;
+            transform: translateY(0);
         }
 
         .audio-title {
             font-weight: bold;
             margin-bottom: 15px;
             text-align: center;
+            letter-spacing: 1px;
         }
 
         audio {
             width: 100%;
-            filter: invert(90%) hue-rotate(180deg);
-            opacity: 0.8;
+            /* ゴールドに合わせてフィルターを調整（少し暖色系に） */
+            filter: invert(85%) sepia(20%) saturate(1000%) hue-rotate(10deg);
+            opacity: 0.9;
         }
 
         details {
@@ -71,9 +86,9 @@
             text-align: center;
             list-style: none;
             font-size: 0.9rem;
+            font-weight: 500;
         }
 
-        /* 歌詞を左寄せに変更 */
         .lyrics-text {
             margin-top: 15px;
             padding: 15px;
@@ -83,7 +98,7 @@
             line-height: 1.8;
             color: var(--text-sub);
             white-space: pre-wrap;
-            text-align: left; /* 左寄せ */
+            text-align: left;
         }
     </style>
 </head>
@@ -93,51 +108,67 @@
     <div id="playlist" class="playlist-container"></div>
 
     <script>
-        // 曲名リストの変更
         const songTitles = [
-            "阪田安正「空の向こうへ」", // 変更済み
+            "阪田安正「空の向こうへ」",
             "多木敏子「上り坂　下り坂　まさかの坂」",
             "笹川ことえ「思慕」"
         ];
 
         const container = document.getElementById('playlist');
 
-        async function loadPlaylist() {
-            for (const title of songTitles) {
-                const card = document.createElement('div');
-                card.className = 'audio-card';
-                
-                let lyrics = "読み込み中...";
-                try {
-                    // 自動的に 「曲名.txt」 を探しに行きます
-                    const response = await fetch(`musics/${title}.txt`);
-                    lyrics = response.ok ? await response.text() : "歌詞ファイルが見つかりません。";
-                } catch (e) {
-                    lyrics = "サーバー環境（Live Server等）で実行してください。";
+        // 交差監視（スクロール検知）の設定
+        const observerOptions = {
+            root: null,
+            rootMargin: "0px",
+            threshold: 0.1 // 10%見えたら発火
+        };
+
+        const observer = new IntersectionObserver((entries, observer) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                    // 一度表示されたら監視を解除（何度もフェードインさせない場合）
+                    observer.unobserve(entry.target);
                 }
+            });
+        }, observerOptions);
 
-                card.innerHTML = `
-                    <div class="audio-title">${title}</div>
-                    <audio src="musics/${title}.mp3" controls></audio>
-                    <details class="lyrics-details">
-                        <summary class="lyrics-summary">歌詞を表示する</summary>
-                        <div class="lyrics-text">${lyrics}</div>
-                    </details>
-                `;
+        async function createCard(title) {
+            const card = document.createElement('div');
+            card.className = 'audio-card';
+            
+            // カードの枠組みを先に作成（高速化のため）
+            card.innerHTML = `
+                <div class="audio-title">${title}</div>
+                <audio src="musics/${title}.mp3" controls preload="none"></audio>
+                <details class="lyrics-details">
+                    <summary class="lyrics-summary">歌詞を表示する</summary>
+                    <div class="lyrics-text">読み込み中...</div>
+                </details>
+            `;
 
-                const details = card.querySelector('.lyrics-details');
-                const summary = card.querySelector('.lyrics-summary');
-                
-                // ラベル切り替え機能
-                details.addEventListener('toggle', () => {
-                    summary.textContent = details.open ? "歌詞を隠す" : "歌詞を表示する";
-                });
+            container.appendChild(card);
+            observer.observe(card); // 監視開始
 
-                container.appendChild(card);
+            // 歌詞の非同期取得
+            try {
+                const response = await fetch(`musics/${title}.txt`);
+                const lyrics = response.ok ? await response.text() : "歌詞ファイルが見てつかりません。";
+                card.querySelector('.lyrics-text').textContent = lyrics;
+            } catch (e) {
+                card.querySelector('.lyrics-text').textContent = "サーバー環境で実行してください。";
             }
+
+            // ラベル切り替え
+            const details = card.querySelector('.lyrics-details');
+            const summary = card.querySelector('.lyrics-summary');
+            details.addEventListener('toggle', () => {
+                summary.textContent = details.open ? "歌詞を隠す" : "歌詞を表示する";
+            });
         }
 
-        loadPlaylist();
+        // 初期ロード
+        songTitles.forEach(title => createCard(title));
     </script>
 </body>
 </html>
