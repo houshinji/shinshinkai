@@ -166,9 +166,6 @@
     <script>
 		// ===== PWA インストール機能 =====
 		let deferredPrompt;
-		const container = document.getElementById('playlist');
-		const installContainer = document.getElementById('install-button-container');
-		const installBtn = document.getElementById('install-btn');
 
 		// デバイス判定
 		function isiOS() {
@@ -181,31 +178,54 @@
 
 		// beforeinstallprompt イベント: デフォルトバナーを抑制
 		window.addEventListener('beforeinstallprompt', (e) => {
-			console.log('✓ beforeinstallprompt イベント発火');
-			// デフォルトのインストール促進バナーを抑制
+            // デフォルトのインストール促進バナーを抑制
 			e.preventDefault();
 			// イベントを保存しておく
 			deferredPrompt = e;
+            
+			addDebugLog('✓ beforeinstallprompt発火');
 			
 			// iOS 以外ならボタンを表示（Windows/Android）
 			if (!isiOS()) {
-				console.log('✓ インストール可能デバイス: ボタンを表示');
+				addDebugLog('✓ ボタン表示');
 				installContainer.style.display = 'flex';
 			} else {
-				console.log('✗ iOS: ボタンは非表示（インストール不可）');
+				addDebugLog('✗ iOS: ボタン非表示');
 			}
 		});
 
-		// デバッグ: イベントが発火しない場合の情報出力
+        // ===== デバッグ情報表示用（Androidでの確認用）=====
+		const debugContainer = document.createElement('div');
+		debugContainer.id = 'debug-info';
+		debugContainer.style.cssText = 'position:fixed;bottom:0;right:0;background:rgba(0,0,0,0.9);color:#0f0;padding:10px;font-size:11px;max-width:300px;max-height:150px;overflow:auto;font-family:monospace;z-index:9999;border:1px solid #0f0;';
+		debugContainer.innerHTML = 'デバッグ情報:<br>';
+		document.body.appendChild(debugContainer);
+
+		function addDebugLog(message) {
+			console.log(message);
+			debugContainer.innerHTML += message + '<br>';
+			debugContainer.scrollTop = debugContainer.scrollHeight;
+		}
+
+        const container = document.getElementById('playlist');
+		const installContainer = document.getElementById('install-button-container');
+		const installBtn = document.getElementById('install-btn');
+
+		// 初期デバッグ情報
 		window.addEventListener('load', () => {
-			if (!deferredPrompt) {
-				console.warn('⚠ beforeinstallprompt イベントが発火していません');
-				console.log('- Service Worker登録状態:', 'serviceWorker' in navigator);
-				console.log('- User Agent:', navigator.userAgent);
-				console.log('- Protocol:', window.location.protocol);
-				console.log('- ボタンコンテナは存在:', !!installContainer);
-			}
+			addDebugLog('User Agent: ' + navigator.userAgent.substring(0, 50));
+			addDebugLog('Platform: ' + navigator.platform);
+			addDebugLog('iOS: ' + (isiOS() ? 'YES' : 'NO'));
+			addDebugLog('Android: ' + (isAndroid() ? 'YES' : 'NO'));
+			addDebugLog('ServiceWorker: ' + ('serviceWorker' in navigator ? 'YES' : 'NO'));
 		});
+
+		// deferred がない場合のログ
+		setTimeout(() => {
+			if (!deferredPrompt) {
+				addDebugLog('⚠ beforeinstallprompt未発火');
+			}
+		}, 2000);
 
 		// インストール完了時のイベント
 		window.addEventListener('appinstalled', () => {
