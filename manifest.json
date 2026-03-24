@@ -8,13 +8,13 @@
   "description": "会員の歌を共有・視聴するためのプラットフォーム",
   "icons": [
     {
-      "src": "favicon.svg",
+      "src": "/shinshinkai/favicon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any"
     },
     {
-      "src": "favicon.svg",
+      "src": "/shinshinkai/favicon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "maskable"
