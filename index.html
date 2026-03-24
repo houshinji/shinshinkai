@@ -182,7 +182,7 @@
 			e.preventDefault();
 			// イベントを保存しておく
 			deferredPrompt = e;
-            
+
 			addDebugLog('✓ beforeinstallprompt発火');
 			
 			// iOS 以外ならボタンを表示（Windows/Android）
@@ -199,7 +199,7 @@
 		debugContainer.id = 'debug-info';
 		debugContainer.style.cssText = 'position:fixed;bottom:0;right:0;background:rgba(0,0,0,0.9);color:#0f0;padding:10px;font-size:11px;max-width:300px;max-height:150px;overflow:auto;font-family:monospace;z-index:9999;border:1px solid #0f0;';
 		debugContainer.innerHTML = 'デバッグ情報:<br>';
-		document.body.appendChild(debugContainer);
+		//document.body.appendChild(debugContainer);
 
 		function addDebugLog(message) {
 			console.log(message);
