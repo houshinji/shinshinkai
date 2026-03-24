@@ -1,14 +1,9 @@
 const CACHE_NAME = 'shinshinkai-v1';
 const ASSETS = [
-  '/shinshinkai/',
-  '/shinshinkai/index.html',
-  '/shinshinkai/manifest.json',
-  '/shinshinkai/sw.js',
-  '/shinshinkai/favicon.svg',
-  '/shinshinkai/icons/icon-192.png',
-  '/shinshinkai/icons/icon-512.png',
-  '/shinshinkai/style.css',
-  '/shinshinkai/app.js',
+  'index.html',
+  'manifest.json',
+  'sw.js',
+  'favicon.svg',
   // 必要なら他の静的リソースを追加
 ];
 
@@ -24,11 +19,9 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys()
       .then((keys) => Promise.all(
-        keys.map((key) => {
-          if (key !== CACHE_NAME) {
-            return caches.delete(key);
-          }
-        })
+        keys
+          .filter((key) => key !== CACHE_NAME)
+          .map((key) => caches.delete(key))
       ))
       .then(() => self.clients.claim())
   );
@@ -48,7 +41,7 @@ self.addEventListener('fetch', (event) => {
             return networkResponse;
           })
         )
-        .catch(() => caches.match('/shinshinkai/'))
+        .catch(() => caches.match('/'))
     );
   }
 });
