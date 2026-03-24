@@ -110,21 +110,136 @@
             white-space: pre-wrap;
             text-align: left;
         }
+
+        #install-button-container {
+            position: static;
+            display: none;
+            justify-content: center;
+            margin-top: 40px;
+            margin-bottom: 40px;
+            animation: slideUp 0.3s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(100px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        #install-btn {
+            background: linear-gradient(135deg, #d4af37 0%, #f4d03f 100%);
+            color: #000;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-weight: bold;
+            font-size: 1rem;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(212, 175, 55, 0.4);
+            transition: all 0.3s ease;
+            max-width: 300px;
+        }
+
+        #install-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(212, 175, 55, 0.6);
+        }
+
+        #install-btn:active {
+            transform: translateY(0);
+        }
     </style>
 </head>
 <body>
 
     <h1>親真会 歌集</h1>
     <div id="playlist" class="playlist-container"></div>
+    <div id="install-button-container">
+        <button id="install-btn">アプリ(PWA)としてインストール</button>
+    </div>
 
     <script>
+		// ===== PWA インストール機能 =====
+		let deferredPrompt;
+		const container = document.getElementById('playlist');
+		const installContainer = document.getElementById('install-button-container');
+		const installBtn = document.getElementById('install-btn');
+
+		// デバイス判定
+		function isiOS() {
+			return /iPad|iPhone|iPod/.test(navigator.userAgent);
+		}
+
+		function isAndroid() {
+			return /Android/.test(navigator.userAgent);
+		}
+
+		// beforeinstallprompt イベント: デフォルトバナーを抑制
+		window.addEventListener('beforeinstallprompt', (e) => {
+			console.log('✓ beforeinstallprompt イベント発火');
+			// デフォルトのインストール促進バナーを抑制
+			e.preventDefault();
+			// イベントを保存しておく
+			deferredPrompt = e;
+			
+			// iOS 以外ならボタンを表示（Windows/Android）
+			if (!isiOS()) {
+				console.log('✓ インストール可能デバイス: ボタンを表示');
+				installContainer.style.display = 'flex';
+			} else {
+				console.log('✗ iOS: ボタンは非表示（インストール不可）');
+			}
+		});
+
+		// デバッグ: イベントが発火しない場合の情報出力
+		window.addEventListener('load', () => {
+			if (!deferredPrompt) {
+				console.warn('⚠ beforeinstallprompt イベントが発火していません');
+				console.log('- Service Worker登録状態:', 'serviceWorker' in navigator);
+				console.log('- User Agent:', navigator.userAgent);
+				console.log('- Protocol:', window.location.protocol);
+				console.log('- ボタンコンテナは存在:', !!installContainer);
+			}
+		});
+
+		// インストール完了時のイベント
+		window.addEventListener('appinstalled', () => {
+			// ボタンを非表示にする
+			installContainer.style.display = 'none';
+			deferredPrompt = null;
+		});
+
+		// インストールボタンをクリック時の処理
+		installBtn.addEventListener('click', async () => {
+			if (!deferredPrompt) {
+				return;
+			}
+			deferredPrompt.prompt(); // インストール対話を表示
+			const { outcome } = await deferredPrompt.userChoice;
+			if (outcome === 'accepted') {
+				deferredPrompt = null;
+				installContainer.style.display = 'none';
+			}
+		});
+
+		// iOS には常にボタンを非表示にする
+		if (isiOS()) {
+			installContainer.style.display = 'none';
+		}
+
+		// Service Worker登録
 		if ('serviceWorker' in navigator) {
 			window.addEventListener('load', () => {
 				navigator.serviceWorker.register('sw.js');
 			});
 		}
-		
-        const container = document.getElementById('playlist');
+        
+        // ===== プレイリスト機能 =====
 
         // 交差監視（スクロール検知）の設定
         const observerOptions = {
