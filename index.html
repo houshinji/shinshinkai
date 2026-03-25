@@ -3,329 +3,400 @@
 <head>
 	<link rel="icon" href="favicon.svg" type="image/svg+xml">
 	<link rel="manifest" href="manifest.json">
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>親真会 歌集</title>
-    <style>
-        :root {
-            --bg-color: #121212;
-            --card-bg: #1e1e1e;
-            --text-main: #e0e0e0;
-            --text-sub: #b0b0b0;
-            /* 紫からゴールドに変更 */
-            --accent-color: #d4af37; 
-            --border-color: #443c24; /* 枠線も少し金色寄りに */
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>親真会 歌集</title>
+	<style>
+		:root {
+			--bg-color: #121212;
+			--card-bg: #1e1e1e;
+			--text-main: #e0e0e0;
+			--text-sub: #b0b0b0;
+			--accent-color: #d4af37;
+			--border-color: #443c24;
 			--title-border: #333333;
-        }
+		}
 
-        body {
-            font-family: "Helvetica Neue", Arial, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-main);
-            margin: 0;
-            padding: 20px;
-        }
+		body {
+			font-family: "Helvetica Neue", Arial, sans-serif;
+			background-color: var(--bg-color);
+			color: var(--text-main);
+			margin: 0;
+			padding: 20px;
+		}
 
 		h1 {
 			text-align: center;
 			color: #d4af37;
-			/* 上下左右に影を配置して縁取りを作る */
-			text-shadow: 
+			text-shadow:
 				2px 2px 0 var(--title-border),
-			   -2px 2px 0 var(--title-border),
+				-2px 2px 0 var(--title-border),
 				2px -2px 0 var(--title-border),
-			   -2px -2px 0 var(--title-border),
-				0px 2px 4px rgba(0,0,0,0.5); /* 最後に全体の影を入れて浮かせる */
-			
+				-2px -2px 0 var(--title-border),
+				0px 2px 4px rgba(0,0,0,0.5);
 			margin-bottom: 40px;
 			font-weight: bold;
 			letter-spacing: 0.1em;
 		}
 
-        .playlist-container {
-            max-width: 800px;
-            margin: 0 auto;
-            display: flex;
-            flex-direction: column;
-            gap: 30px;
-        }
+		.playlist-container {
+			max-width: 800px;
+			margin: 0 auto;
+			display: flex;
+			flex-direction: column;
+			gap: 30px;
+		}
 
-        /* フェードインのための初期状態 */
-        .audio-card {
-            background: var(--card-bg);
-            padding: 20px;
-            border-radius: 16px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.6);
-            border: 1px solid var(--border-color);
-            
-            /* 初期は透明で下に少しずらしておく */
-            opacity: 0;
-            transform: translateY(30px);
-            transition: opacity 0.8s ease-out, transform 0.8s ease-out;
-        }
+		.audio-card {
+			background: var(--card-bg);
+			padding: 20px;
+			border-radius: 16px;
+			box-shadow: 0 10px 25px rgba(0,0,0,0.6);
+			border: 1px solid var(--border-color);
+			opacity: 0;
+			transform: translateY(30px);
+			transition: opacity 0.8s ease-out, transform 0.8s ease-out;
+		}
 
-        /* スクロールして表示された時の状態 */
-        .audio-card.visible {
-            opacity: 1;
-            transform: translateY(0);
-        }
+		.audio-card.visible {
+			opacity: 1;
+			transform: translateY(0);
+		}
 
-        .audio-title {
-            font-weight: bold;
-            margin-bottom: 15px;
-            text-align: center;
-            letter-spacing: 1px;
-        }
+		.audio-title {
+			font-weight: bold;
+			margin-bottom: 15px;
+			text-align: center;
+			letter-spacing: 1px;
+		}
 
-        audio {
-            width: 100%;
-            /* ゴールドに合わせてフィルターを調整（少し暖色系に） */
-            filter: invert(85%) sepia(20%) saturate(1000%) hue-rotate(10deg);
-            opacity: 0.9;
-        }
+		audio {
+			width: 100%;
+			filter: invert(85%) sepia(20%) saturate(1000%) hue-rotate(10deg);
+			opacity: 0.9;
+		}
 
-        details {
-            margin-top: 15px;
-            border-top: 1px solid var(--border-color);
-            padding-top: 15px;
-        }
+		details {
+			margin-top: 15px;
+			border-top: 1px solid var(--border-color);
+			padding-top: 15px;
+		}
 
-        summary {
-            cursor: pointer;
-            color: var(--accent-color);
-            text-align: center;
-            list-style: none;
-            font-size: 0.9rem;
-            font-weight: 500;
-        }
+		summary {
+			cursor: pointer;
+			color: var(--accent-color);
+			text-align: center;
+			list-style: none;
+			font-size: 0.9rem;
+			font-weight: 500;
+		}
 
-        .lyrics-text {
-            margin-top: 15px;
-            padding: 15px;
-            background: #252525;
-            border-radius: 8px;
-            font-size: 0.95rem;
-            line-height: 1.8;
-            color: var(--text-sub);
-            white-space: pre-wrap;
-            text-align: left;
-        }
+		.lyrics-text {
+			margin-top: 15px;
+			padding: 15px;
+			background: #252525;
+			border-radius: 8px;
+			font-size: 0.95rem;
+			line-height: 1.8;
+			color: var(--text-sub);
+			white-space: pre-wrap;
+			text-align: left;
+		}
 
-        #install-button-container {
-            position: static;
-            display: none;
-            justify-content: center;
-            margin-top: 40px;
-            margin-bottom: 40px;
-            animation: slideUp 0.3s ease-out;
-        }
+		#install-button-container {
+			position: static;
+			display: none;
+			flex-direction: column;
+			align-items: center;
+			justify-content: center;
+			margin-top: 40px;
+			margin-bottom: 40px;
+			animation: slideUp 0.3s ease-out;
+		}
 
-        @keyframes slideUp {
-            from {
-                transform: translateY(100px);
-                opacity: 0;
-            }
-            to {
-                transform: translateY(0);
-                opacity: 1;
-            }
-        }
+		@keyframes slideUp {
+			from {
+				transform: translateY(100px);
+				opacity: 0;
+			}
+			to {
+				transform: translateY(0);
+				opacity: 1;
+			}
+		}
 
-        #install-btn {
-            background: linear-gradient(135deg, #d4af37 0%, #f4d03f 100%);
-            color: #000;
-            border: none;
-            padding: 12px 30px;
-            border-radius: 25px;
-            font-weight: bold;
-            font-size: 1rem;
-            cursor: pointer;
-            box-shadow: 0 4px 15px rgba(212, 175, 55, 0.4);
-            transition: all 0.3s ease;
-            max-width: 300px;
-        }
+		#install-btn {
+			background: linear-gradient(135deg, #d4af37 0%, #f4d03f 100%);
+			color: #000;
+			border: none;
+			padding: 12px 30px;
+			border-radius: 25px;
+			font-weight: bold;
+			font-size: 1rem;
+			cursor: pointer;
+			box-shadow: 0 4px 15px rgba(212, 175, 55, 0.4);
+			transition: all 0.3s ease;
+			max-width: 300px;
+		}
 
-        #install-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(212, 175, 55, 0.6);
-        }
+		#install-btn:hover {
+			transform: translateY(-2px);
+			box-shadow: 0 6px 20px rgba(212, 175, 55, 0.6);
+		}
 
-        #install-btn:active {
-            transform: translateY(0);
-        }
-    </style>
+		#install-btn:active {
+			transform: translateY(0);
+		}
+
+		.install-description {
+			margin-top: 10px;
+			font-size: 0.85rem;
+			color: var(--text-sub);
+			text-align: center;
+			line-height: 1.6;
+			max-width: 300px;
+		}
+
+		.status-message {
+			max-width: 800px;
+			margin: 0 auto 20px auto;
+			text-align: center;
+			color: var(--text-sub);
+			font-size: 0.9rem;
+			min-height: 1.4em;
+		}
+	</style>
 </head>
 <body>
+	<h1>親真会 歌集</h1>
+	<div id="status-message" class="status-message"></div>
+	<div id="playlist" class="playlist-container"></div>
 
-    <h1>親真会 歌集</h1>
-    <div id="playlist" class="playlist-container"></div>
-    <div id="install-button-container">
-        <button id="install-btn">アプリ(PWA)としてインストール</button>
-    </div>
+	<div id="install-button-container">
+		<button id="install-btn">アプリ(PWA)としてインストール</button>
+		<div class="install-description">
+			インストールすると一度再生した曲が保存され、次回から通信費を使わず再生できるようになります
+		</div>
+	</div>
 
-    <script>
-		// ===== PWA インストール機能 =====
-		let deferredPrompt;
+	<script>
+		let deferredPrompt = null;
+		let swRegistration = null;
 
-		// デバイス判定
+		const container = document.getElementById('playlist');
+		const installContainer = document.getElementById('install-button-container');
+		const installBtn = document.getElementById('install-btn');
+		const statusMessage = document.getElementById('status-message');
+
 		function isiOS() {
 			return /iPad|iPhone|iPod/.test(navigator.userAgent);
 		}
 
-		function isAndroid() {
-			return /Android/.test(navigator.userAgent);
+		function setStatus(message) {
+			statusMessage.textContent = message || '';
 		}
 
-		// beforeinstallprompt イベント: デフォルトバナーを抑制
+		const observer = new IntersectionObserver((entries, observerInstance) => {
+			entries.forEach(entry => {
+				if (entry.isIntersecting) {
+					entry.target.classList.add('visible');
+					observerInstance.unobserve(entry.target);
+				}
+			});
+		}, {
+			root: null,
+			rootMargin: '0px',
+			threshold: 0.1
+		});
+
+		function parseSongList(text) {
+			return text
+				.split(/\r?\n/)
+				.map(line => line.trim())
+				.filter(Boolean);
+		}
+
+		async function loadLyrics(title, lyricsTextElement) {
+			const lyricsPath = `musics/${encodeURIComponent(title)}.txt`;
+
+			try {
+				const response = await fetch(lyricsPath);
+				if (!response.ok) {
+					lyricsTextElement.textContent = '歌詞ファイルが見つかりません。';
+					return;
+				}
+				lyricsTextElement.textContent = await response.text();
+			} catch {
+				lyricsTextElement.textContent = '歌詞を読み込めませんでした。';
+			}
+		}
+
+		function createCard(title) {
+			const card = document.createElement('div');
+			card.className = 'audio-card';
+
+			card.innerHTML = `
+				<div class="audio-title"></div>
+				<audio controls preload="none"></audio>
+				<details class="lyrics-details">
+					<summary class="lyrics-summary">歌詞を表示する</summary>
+					<div class="lyrics-text" data-loaded="false">歌詞を表示すると読み込みます。</div>
+				</details>
+			`;
+
+			card.querySelector('.audio-title').textContent = title;
+
+			const audio = card.querySelector('audio');
+			audio.src = `musics/${encodeURIComponent(title)}.mp3`;
+
+			const details = card.querySelector('.lyrics-details');
+			const summary = card.querySelector('.lyrics-summary');
+			const lyricsText = card.querySelector('.lyrics-text');
+
+			details.addEventListener('toggle', async () => {
+				summary.textContent = details.open ? '歌詞を隠す' : '歌詞を表示する';
+
+				if (details.open && lyricsText.dataset.loaded !== 'true') {
+					lyricsText.textContent = '読み込み中...';
+					await loadLyrics(title, lyricsText);
+					lyricsText.dataset.loaded = 'true';
+				}
+			});
+
+			container.appendChild(card);
+			observer.observe(card);
+		}
+
+		async function loadSongList() {
+			container.innerHTML = '';
+
+			try {
+				const response = await fetch('musics/index.html');
+				if (!response.ok) {
+					throw new Error('musics/index.html が見つかりません。');
+				}
+
+				const text = await response.text();
+				const songTitles = parseSongList(text);
+
+				if (songTitles.length === 0) {
+					container.innerHTML = '<div style="text-align:center;">曲がありません。</div>';
+					return;
+				}
+
+				for (const title of songTitles) {
+					createCard(title);
+				}
+			} catch (e) {
+				container.innerHTML = `<div style="text-align:center; color:red;">${e.message}</div>`;
+			}
+		}
+
+		function requestMusicSync() {
+			return new Promise((resolve) => {
+				if (!swRegistration) {
+					resolve({ ok: false, error: 'No registration' });
+					return;
+				}
+
+				const messageChannel = new MessageChannel();
+				let settled = false;
+
+				messageChannel.port1.onmessage = (event) => {
+					settled = true;
+					resolve(event.data || { ok: false, error: 'No response' });
+				};
+
+				const message = { type: 'SYNC_MUSICS' };
+
+				if (navigator.serviceWorker.controller) {
+					navigator.serviceWorker.controller.postMessage(message, [messageChannel.port2]);
+				} else if (swRegistration.active) {
+					swRegistration.active.postMessage(message, [messageChannel.port2]);
+				} else {
+					resolve({ ok: false, error: 'No active service worker' });
+					return;
+				}
+
+				setTimeout(() => {
+					if (!settled) {
+						resolve({ ok: false, error: 'Sync timeout' });
+					}
+				}, 30000);
+			});
+		}
+
+		async function registerServiceWorkerAndInit() {
+			if (!('serviceWorker' in navigator)) {
+				await loadSongList();
+				return;
+			}
+
+			try {
+				swRegistration = await navigator.serviceWorker.register('sw.js');
+				await navigator.serviceWorker.ready;
+
+				if (navigator.onLine) {
+					setStatus('更新を確認しています...');
+					await requestMusicSync();
+					setStatus('');
+				} else {
+					setStatus('オフラインで動作中です。');
+				}
+			} catch {
+				setStatus('');
+			}
+
+			await loadSongList();
+		}
+
 		window.addEventListener('beforeinstallprompt', (e) => {
-            // デフォルトのインストール促進バナーを抑制
 			e.preventDefault();
-			// イベントを保存しておく
 			deferredPrompt = e;
 
-			addDebugLog('✓ beforeinstallprompt発火');
-			
-			// iOS 以外ならボタンを表示（Windows/Android）
 			if (!isiOS()) {
-				addDebugLog('✓ ボタン表示');
 				installContainer.style.display = 'flex';
-			} else {
-				addDebugLog('✗ iOS: ボタン非表示');
 			}
 		});
 
-        // ===== デバッグ情報表示用（Androidでの確認用）=====
-		const debugContainer = document.createElement('div');
-		debugContainer.id = 'debug-info';
-		debugContainer.style.cssText = 'position:fixed;bottom:0;right:0;background:rgba(0,0,0,0.9);color:#0f0;padding:10px;font-size:11px;max-width:300px;max-height:150px;overflow:auto;font-family:monospace;z-index:9999;border:1px solid #0f0;';
-		debugContainer.innerHTML = 'デバッグ情報:<br>';
-		//document.body.appendChild(debugContainer);
-
-		function addDebugLog(message) {
-			console.log(message);
-			debugContainer.innerHTML += message + '<br>';
-			debugContainer.scrollTop = debugContainer.scrollHeight;
-		}
-
-        const container = document.getElementById('playlist');
-		const installContainer = document.getElementById('install-button-container');
-		const installBtn = document.getElementById('install-btn');
-
-		// 初期デバッグ情報
-		window.addEventListener('load', () => {
-			addDebugLog('User Agent: ' + navigator.userAgent.substring(0, 50));
-			addDebugLog('Platform: ' + navigator.platform);
-			addDebugLog('iOS: ' + (isiOS() ? 'YES' : 'NO'));
-			addDebugLog('Android: ' + (isAndroid() ? 'YES' : 'NO'));
-			addDebugLog('ServiceWorker: ' + ('serviceWorker' in navigator ? 'YES' : 'NO'));
-		});
-
-		// deferred がない場合のログ
-		setTimeout(() => {
-			if (!deferredPrompt) {
-				addDebugLog('⚠ beforeinstallprompt未発火');
-			}
-		}, 2000);
-
-		// インストール完了時のイベント
 		window.addEventListener('appinstalled', () => {
-			// ボタンを非表示にする
 			installContainer.style.display = 'none';
 			deferredPrompt = null;
 		});
 
-		// インストールボタンをクリック時の処理
 		installBtn.addEventListener('click', async () => {
 			if (!deferredPrompt) {
 				return;
 			}
-			deferredPrompt.prompt(); // インストール対話を表示
+
+			deferredPrompt.prompt();
 			const { outcome } = await deferredPrompt.userChoice;
+
 			if (outcome === 'accepted') {
 				deferredPrompt = null;
 				installContainer.style.display = 'none';
 			}
 		});
 
-		// iOS には常にボタンを非表示にする
-		if (isiOS()) {
-			installContainer.style.display = 'none';
-		}
+		window.addEventListener('online', async () => {
+			setStatus('更新を確認しています...');
+			if (swRegistration) {
+				await requestMusicSync();
+			}
+			await loadSongList();
+			setStatus('');
+		});
 
-		// Service Worker登録
-		if ('serviceWorker' in navigator) {
-			window.addEventListener('load', () => {
-				navigator.serviceWorker.register('sw.js');
-			});
-		}
-        
-        // ===== プレイリスト機能 =====
+		window.addEventListener('offline', () => {
+			setStatus('オフラインで動作中です。');
+		});
 
-        // 交差監視（スクロール検知）の設定
-        const observerOptions = {
-            root: null,
-            rootMargin: "0px",
-            threshold: 0.1 // 10%見えたら発火
-        };
-
-        const observer = new IntersectionObserver((entries, observer) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    entry.target.classList.add('visible');
-                    observer.unobserve(entry.target);
-                }
-            });
-        }, observerOptions);
-
-        async function createCard(title) {
-            const card = document.createElement('div');
-            card.className = 'audio-card';
-            
-            card.innerHTML = `
-                <div class="audio-title">${title}</div>
-                <audio src="musics/${title}.mp3" controls preload="none"></audio>
-                <details class="lyrics-details">
-                    <summary class="lyrics-summary">歌詞を表示する</summary>
-                    <div class="lyrics-text">読み込み中...</div>
-                </details>
-            `;
-
-            container.appendChild(card);
-            observer.observe(card);
-
-            try {
-                const response = await fetch(`musics/${title}.txt`);
-                const lyrics = response.ok ? await response.text() : "歌詞ファイルが見つかりません。";
-                card.querySelector('.lyrics-text').textContent = lyrics;
-            } catch (e) {
-                card.querySelector('.lyrics-text').textContent = "サーバー環境で実行してください。";
-            }
-
-            const details = card.querySelector('.lyrics-details');
-            const summary = card.querySelector('.lyrics-summary');
-            details.addEventListener('toggle', () => {
-                summary.textContent = details.open ? "歌詞を隠す" : "歌詞を表示する";
-            });
-        }
-
-        // songlist.txtから曲名リストを取得
-        async function loadSongList() {
-            try {
-                const response = await fetch('musics/index.html');
-                if (!response.ok) throw new Error('songlist.txt が見つかりません。');
-                
-                const text = await response.text();
-                // 改行で分割し、空行を除去
-                const songTitles = text.split(/\r?\n/).filter(line => line.trim() !== "");
-                
-                songTitles.forEach(title => createCard(title.trim()));
-            } catch (e) {
-                container.innerHTML = `<div style="text-align:center; color:red;">${e.message}</div>`;
-            }
-        }
-
-        // 実行
-        loadSongList();
-    </script>
+		window.addEventListener('load', async () => {
+			if (isiOS()) {
+				installContainer.style.display = 'none';
+			}
+			await registerServiceWorkerAndInit();
+		});
+	</script>
 </body>
 </html>
