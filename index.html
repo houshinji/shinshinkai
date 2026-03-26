@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
+	<!--2026/3/26 11:06-->
 	<link rel="icon" href="favicon.svg" type="image/svg+xml">
 	<link rel="manifest" href="manifest.json">
 	<meta charset="UTF-8">
@@ -106,3 +107,93 @@
 		const installContainer = document.getElementById('install-button-container');
 		const installBtn = document.getElementById('install-btn');
 		const statusMessage = document.getElementById('status-message');
+
+		function isiOS() { return /iPad|iPhone|iPod/.test(navigator.userAgent); }
+		function setStatus(message) { statusMessage.textContent = message || ''; }
+
+		const observer = new IntersectionObserver((entries) => {
+			entries.forEach(entry => { if (entry.isIntersecting) entry.target.classList.add('visible'); });
+		}, { threshold: 0.1 });
+
+		function parseSongList(text) { return text.split(/\r?\n/).map(line => line.trim()).filter(Boolean); }
+
+		async function loadLyrics(title, lyricsTextElement) {
+			const lyricsPath = `musics/${encodeURIComponent(title)}.txt`;
+			try {
+				const response = await fetch(lyricsPath);
+				lyricsTextElement.textContent = response.ok ? await response.text() : '歌詞ファイルが見つかりません。';
+			} catch { lyricsTextElement.textContent = '歌詞を読み込めませんでした。'; }
+		}
+
+		function createCard(title) {
+			const card = document.createElement('div');
+			card.className = 'audio-card';
+			card.innerHTML = `
+				<div class="audio-title">${title}</div>
+				<audio controls preload="none" src="musics/${encodeURIComponent(title)}.mp3"></audio>
+				<details class="lyrics-details">
+					<summary class="lyrics-summary">歌詞を表示する</summary>
+					<div class="lyrics-text" data-loaded="false"></div>
+				</details>
+			`;
+			const details = card.querySelector('.lyrics-details');
+			const summary = card.querySelector('.lyrics-summary');
+			const lyricsText = card.querySelector('.lyrics-text');
+
+			details.addEventListener('toggle', async () => {
+				summary.textContent = details.open ? '歌詞を隠す' : '歌詞を表示する';
+				if (details.open && lyricsText.dataset.loaded !== 'true') {
+					lyricsText.textContent = '読み込み中...';
+					await loadLyrics(title, lyricsText);
+					lyricsText.dataset.loaded = 'true';
+				}
+			});
+			container.appendChild(card);
+			observer.observe(card);
+		}
+
+		async function loadSongList() {
+			container.innerHTML = '';
+			try {
+				const response = await fetch('musics/index.html');
+				if (!response.ok) throw new Error('曲リストが見 turn ません。');
+				const titles = parseSongList(await response.text());
+				titles.length ? titles.forEach(createCard) : container.innerHTML = '<div>曲がありません。</div>';
+			} catch (e) { container.innerHTML = `<div style="color:red;">${e.message}</div>`; }
+		}
+
+		async function registerServiceWorkerAndInit() {
+			if ('serviceWorker' in navigator) {
+				try {
+					swRegistration = await navigator.serviceWorker.register('sw.js');
+					await navigator.serviceWorker.ready;
+					if (navigator.onLine) {
+						setStatus('更新を確認しています...');
+						const controller = navigator.serviceWorker.controller || swRegistration.active;
+						if (controller) controller.postMessage({ type: 'SYNC_MUSICS' });
+						setStatus('');
+					}
+				} catch (e) { console.error(e); }
+			}
+			await loadSongList();
+		}
+
+		window.addEventListener('beforeinstallprompt', (e) => {
+			e.preventDefault();
+			deferredPrompt = e;
+			if (!isiOS()) installContainer.style.display = 'flex';
+		});
+
+		installBtn.addEventListener('click', async () => {
+			if (!deferredPrompt) return;
+			deferredPrompt.prompt();
+			const { outcome } = await deferredPrompt.userChoice;
+			if (outcome === 'accepted') { deferredPrompt = null; installContainer.style.display = 'none'; }
+		});
+
+		window.addEventListener('load', registerServiceWorkerAndInit);
+		window.addEventListener('online', () => { setStatus(''); loadSongList(); });
+		window.addEventListener('offline', () => setStatus('オフラインで動作中です。'));
+	</script>
+</body>
+</html>
