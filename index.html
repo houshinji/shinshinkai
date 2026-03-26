@@ -1,14 +1,14 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-	<!--2026/3/26 11:06-->
+	<!--2026/3/26 11:12-->
 	<link rel="icon" href="favicon.svg" type="image/svg+xml">
 	<link rel="manifest" href="manifest.json">
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>親真会 歌集</title>
 	<style>
-		/* 元のデザインを完全に維持 */
+		/* 元の CSS をそのまま継承 */
 		:root {
 			--bg-color: #121212;
 			--card-bg: #1e1e1e;
@@ -156,7 +156,7 @@
 			container.innerHTML = '';
 			try {
 				const response = await fetch('musics/index.html');
-				if (!response.ok) throw new Error('曲リストが見 turn ません。');
+				if (!response.ok) throw new Error('曲リストが見つかりません。');
 				const titles = parseSongList(await response.text());
 				titles.length ? titles.forEach(createCard) : container.innerHTML = '<div>曲がありません。</div>';
 			} catch (e) { container.innerHTML = `<div style="color:red;">${e.message}</div>`; }

@@ -1,9 +1,10 @@
 importScripts('https://storage.googleapis.com/workbox-cdn/releases/6.4.1/workbox-sw.js');
 
 if (workbox) {
-    const CACHE_NAME = 'shinshinkai-kashu-v6';
+    // キャッシュ名 (古いキャッシュを破棄するためバージョンを上げました)
+    const CACHE_NAME = 'shinshinkai-kashu-v12';
 
-    // 1. インストール時に基本アセットをプリキャッシュ（オフライン起動を保証）
+    // インストール時に基本ファイルを強制キャッシュ
     self.addEventListener('install', (event) => {
         event.waitUntil(
             caches.open('static-assets').then((cache) => {
@@ -15,10 +16,11 @@ if (workbox) {
                 ]);
             })
         );
+        self.skipWaiting();
     });
 
-    // 2. 音楽ファイル (.mp3) 専用戦略
-    // RangeRequestsPlugin により Android/iOS でのキャッシュ再生を正常化
+    // 1. MP3 ファイルの戦略：CacheFirst + RangeRequest
+    // これにより、キャッシュからでも「分割読み込み」として正しく再生されます
     workbox.routing.registerRoute(
         ({ url }) => url.pathname.endsWith('.mp3'),
         new workbox.strategies.CacheFirst({
@@ -27,13 +29,13 @@ if (workbox) {
                 new workbox.rangeRequests.RangeRequestsPlugin(),
                 new workbox.expiration.ExpirationPlugin({
                     maxEntries: 100,
-                    maxAgeSeconds: 30 * 24 * 60 * 60, // 30日間保持
+                    maxAgeSeconds: 30 * 24 * 60 * 60,
                 }),
             ],
         })
     );
 
-    // 3. 歌詞ファイルなどの音楽メタデータ
+    // 2. 歌詞ファイルなど
     workbox.routing.registerRoute(
         ({ url }) => url.pathname.includes('/musics/') && !url.pathname.endsWith('.mp3'),
         new workbox.strategies.NetworkFirst({
@@ -41,7 +43,7 @@ if (workbox) {
         })
     );
 
-    // 4. その他の静的ファイル
+    // 3. 基本アセット
     workbox.routing.registerRoute(
         ({ request }) => 
             ['document', 'style', 'script', 'image'].includes(request.destination) ||
@@ -59,5 +61,6 @@ if (workbox) {
                     .map(key => caches.delete(key))
             ))
         );
+        self.clients.claim();
     });
 }
