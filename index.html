@@ -24,7 +24,7 @@
 			background-color: var(--bg-color);
 			color: var(--text-main);
 			margin: 0;
-			padding: 20px;
+			padding: 20px 20px 90px;
 		}
 
 		h1 {
@@ -84,6 +84,17 @@
 		}
 
 		.install-description { margin-top: 10px; font-size: 0.85rem; color: var(--text-sub); text-align: center; line-height: 1.6; max-width: 300px; }
+
+		.footer-note {
+			width: 100%;
+			padding: 15px 20px;
+			background: rgba(18, 18, 18, 0.9);
+			border-top: 1px solid var(--border-color);
+			text-align: center;
+			font-size: 0.85rem;
+			color: var(--text-sub);
+			margin-top: 40px;
+		}
 		.status-message { max-width: 800px; margin: 0 auto 20px auto; text-align: center; color: var(--text-sub); font-size: 0.9rem; min-height: 1.4em; }
 	</style>
 </head>
@@ -95,8 +106,12 @@
 	<div id="install-button-container">
 		<button id="install-btn">アプリ(PWA)としてインストール</button>
 		<div class="install-description">
-			一度再生した曲や表示した歌詞は保存され、通信費を使わず再生できます。
+			インストールすると、いつでもホーム画面からすぐに開けます。
 		</div>
+	</div>
+
+	<div class="footer-note">
+		一度再生した曲や表示した歌詞は保存され、通信費を使わず再生できます。
 	</div>
 
 	<script src="https://cdn.jsdelivr.net/npm/dexie@4/dist/dexie.min.js"></script>
