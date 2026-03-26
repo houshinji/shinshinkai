@@ -139,7 +139,6 @@
 		const db = window.Dexie ? new Dexie('shinshinkai-audio-db') : null;
 		if (db) db.version(1).stores({ tracks: 'id,updatedAt' });
 
-		function isiOS() { return /iPad|iPhone|iPod/.test(navigator.userAgent); }
 		function setStatus(message) { statusMessage.textContent = message || ''; }
 		function getTrackPath(title) { return `musics/${encodeURIComponent(title)}.mp3`; }
 
@@ -274,6 +273,10 @@
 		}
 
 		async function loadSongList() {
+			// 古い ObjectURL を解放してメモリリークを防ぐ
+			activeObjectUrls.forEach(url => URL.revokeObjectURL(url));
+			activeObjectUrls.clear();
+
 			container.innerHTML = '';
 			try {
 				const response = await fetch('musics/index.html');
@@ -303,7 +306,7 @@
 		window.addEventListener('beforeinstallprompt', (e) => {
 			e.preventDefault();
 			deferredPrompt = e;
-			if (!isiOS()) installContainer.style.display = 'flex';
+			installContainer.style.display = 'flex';
 		});
 
 		installBtn.addEventListener('click', async () => {
