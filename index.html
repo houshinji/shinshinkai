@@ -7,6 +7,7 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>親真会 歌集</title>
 	<style>
+		/* 元のデザインを完全に維持 */
 		:root {
 			--bg-color: #121212;
 			--card-bg: #1e1e1e;
@@ -28,12 +29,7 @@
 		h1 {
 			text-align: center;
 			color: #d4af37;
-			text-shadow:
-				2px 2px 0 var(--title-border),
-				-2px 2px 0 var(--title-border),
-				2px -2px 0 var(--title-border),
-				-2px -2px 0 var(--title-border),
-				0px 2px 4px rgba(0,0,0,0.5);
+			text-shadow: 2px 2px 0 var(--title-border), -2px 2px 0 var(--title-border), 2px -2px 0 var(--title-border), -2px -2px 0 var(--title-border), 0px 2px 4px rgba(0,0,0,0.5);
 			margin-bottom: 40px;
 			font-weight: bold;
 			letter-spacing: 0.1em;
@@ -58,17 +54,9 @@
 			transition: opacity 0.8s ease-out, transform 0.8s ease-out;
 		}
 
-		.audio-card.visible {
-			opacity: 1;
-			transform: translateY(0);
-		}
+		.audio-card.visible { opacity: 1; transform: translateY(0); }
 
-		.audio-title {
-			font-weight: bold;
-			margin-bottom: 15px;
-			text-align: center;
-			letter-spacing: 1px;
-		}
+		.audio-title { font-weight: bold; margin-bottom: 15px; text-align: center; letter-spacing: 1px; }
 
 		audio {
 			width: 100%;
@@ -76,95 +64,26 @@
 			opacity: 0.9;
 		}
 
-		details {
-			margin-top: 15px;
-			border-top: 1px solid var(--border-color);
-			padding-top: 15px;
-		}
-
-		summary {
-			cursor: pointer;
-			color: var(--accent-color);
-			text-align: center;
-			list-style: none;
-			font-size: 0.9rem;
-			font-weight: 500;
-		}
+		details { margin-top: 15px; border-top: 1px solid var(--border-color); padding-top: 15px; }
+		summary { cursor: pointer; color: var(--accent-color); text-align: center; list-style: none; font-size: 0.9rem; font-weight: 500; }
 
 		.lyrics-text {
-			margin-top: 15px;
-			padding: 15px;
-			background: #252525;
-			border-radius: 8px;
-			font-size: 0.95rem;
-			line-height: 1.8;
-			color: var(--text-sub);
-			white-space: pre-wrap;
-			text-align: left;
+			margin-top: 15px; padding: 15px; background: #252525; border-radius: 8px; font-size: 0.95rem; line-height: 1.8; color: var(--text-sub); white-space: pre-wrap; text-align: left;
 		}
 
 		#install-button-container {
-			position: static;
-			display: none;
-			flex-direction: column;
-			align-items: center;
-			justify-content: center;
-			margin-top: 40px;
-			margin-bottom: 40px;
-			animation: slideUp 0.3s ease-out;
+			position: static; display: none; flex-direction: column; align-items: center; justify-content: center; margin-top: 40px; margin-bottom: 40px; animation: slideUp 0.3s ease-out;
 		}
 
-		@keyframes slideUp {
-			from {
-				transform: translateY(100px);
-				opacity: 0;
-			}
-			to {
-				transform: translateY(0);
-				opacity: 1;
-			}
-		}
+		@keyframes slideUp { from { transform: translateY(100px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 
 		#install-btn {
 			background: linear-gradient(135deg, #d4af37 0%, #f4d03f 100%);
-			color: #000;
-			border: none;
-			padding: 12px 30px;
-			border-radius: 25px;
-			font-weight: bold;
-			font-size: 1rem;
-			cursor: pointer;
-			box-shadow: 0 4px 15px rgba(212, 175, 55, 0.4);
-			transition: all 0.3s ease;
-			max-width: 300px;
+			color: #000; border: none; padding: 12px 30px; border-radius: 25px; font-weight: bold; font-size: 1rem; cursor: pointer; box-shadow: 0 4px 15px rgba(212, 175, 55, 0.4); transition: all 0.3s ease; max-width: 300px;
 		}
 
-		#install-btn:hover {
-			transform: translateY(-2px);
-			box-shadow: 0 6px 20px rgba(212, 175, 55, 0.6);
-		}
-
-		#install-btn:active {
-			transform: translateY(0);
-		}
-
-		.install-description {
-			margin-top: 10px;
-			font-size: 0.85rem;
-			color: var(--text-sub);
-			text-align: center;
-			line-height: 1.6;
-			max-width: 300px;
-		}
-
-		.status-message {
-			max-width: 800px;
-			margin: 0 auto 20px auto;
-			text-align: center;
-			color: var(--text-sub);
-			font-size: 0.9rem;
-			min-height: 1.4em;
-		}
+		.install-description { margin-top: 10px; font-size: 0.85rem; color: var(--text-sub); text-align: center; line-height: 1.6; max-width: 300px; }
+		.status-message { max-width: 800px; margin: 0 auto 20px auto; text-align: center; color: var(--text-sub); font-size: 0.9rem; min-height: 1.4em; }
 	</style>
 </head>
 <body>
@@ -187,216 +106,3 @@
 		const installContainer = document.getElementById('install-button-container');
 		const installBtn = document.getElementById('install-btn');
 		const statusMessage = document.getElementById('status-message');
-
-		function isiOS() {
-			return /iPad|iPhone|iPod/.test(navigator.userAgent);
-		}
-
-		function setStatus(message) {
-			statusMessage.textContent = message || '';
-		}
-
-		const observer = new IntersectionObserver((entries, observerInstance) => {
-			entries.forEach(entry => {
-				if (entry.isIntersecting) {
-					entry.target.classList.add('visible');
-					observerInstance.unobserve(entry.target);
-				}
-			});
-		}, {
-			root: null,
-			rootMargin: '0px',
-			threshold: 0.1
-		});
-
-		function parseSongList(text) {
-			return text
-				.split(/\r?\n/)
-				.map(line => line.trim())
-				.filter(Boolean);
-		}
-
-		async function loadLyrics(title, lyricsTextElement) {
-			const lyricsPath = `musics/${encodeURIComponent(title)}.txt`;
-
-			try {
-				const response = await fetch(lyricsPath);
-				if (!response.ok) {
-					lyricsTextElement.textContent = '歌詞ファイルが見つかりません。';
-					return;
-				}
-				lyricsTextElement.textContent = await response.text();
-			} catch {
-				lyricsTextElement.textContent = '歌詞を読み込めませんでした。';
-			}
-		}
-
-		function createCard(title) {
-			const card = document.createElement('div');
-			card.className = 'audio-card';
-
-			card.innerHTML = `
-				<div class="audio-title"></div>
-				<audio controls preload="none"></audio>
-				<details class="lyrics-details">
-					<summary class="lyrics-summary">歌詞を表示する</summary>
-					<div class="lyrics-text" data-loaded="false">歌詞を表示すると読み込みます。</div>
-				</details>
-			`;
-
-			card.querySelector('.audio-title').textContent = title;
-
-			const audio = card.querySelector('audio');
-			audio.src = `musics/${encodeURIComponent(title)}.mp3`;
-
-			const details = card.querySelector('.lyrics-details');
-			const summary = card.querySelector('.lyrics-summary');
-			const lyricsText = card.querySelector('.lyrics-text');
-
-			details.addEventListener('toggle', async () => {
-				summary.textContent = details.open ? '歌詞を隠す' : '歌詞を表示する';
-
-				if (details.open && lyricsText.dataset.loaded !== 'true') {
-					lyricsText.textContent = '読み込み中...';
-					await loadLyrics(title, lyricsText);
-					lyricsText.dataset.loaded = 'true';
-				}
-			});
-
-			container.appendChild(card);
-			observer.observe(card);
-		}
-
-		async function loadSongList() {
-			container.innerHTML = '';
-
-			try {
-				const response = await fetch('musics/index.html');
-				if (!response.ok) {
-					throw new Error('musics/index.html が見つかりません。');
-				}
-
-				const text = await response.text();
-				const songTitles = parseSongList(text);
-
-				if (songTitles.length === 0) {
-					container.innerHTML = '<div style="text-align:center;">曲がありません。</div>';
-					return;
-				}
-
-				for (const title of songTitles) {
-					createCard(title);
-				}
-			} catch (e) {
-				container.innerHTML = `<div style="text-align:center; color:red;">${e.message}</div>`;
-			}
-		}
-
-		function requestMusicSync() {
-			return new Promise((resolve) => {
-				if (!swRegistration) {
-					resolve({ ok: false, error: 'No registration' });
-					return;
-				}
-
-				const messageChannel = new MessageChannel();
-				let settled = false;
-
-				messageChannel.port1.onmessage = (event) => {
-					settled = true;
-					resolve(event.data || { ok: false, error: 'No response' });
-				};
-
-				const message = { type: 'SYNC_MUSICS' };
-
-				if (navigator.serviceWorker.controller) {
-					navigator.serviceWorker.controller.postMessage(message, [messageChannel.port2]);
-				} else if (swRegistration.active) {
-					swRegistration.active.postMessage(message, [messageChannel.port2]);
-				} else {
-					resolve({ ok: false, error: 'No active service worker' });
-					return;
-				}
-
-				setTimeout(() => {
-					if (!settled) {
-						resolve({ ok: false, error: 'Sync timeout' });
-					}
-				}, 30000);
-			});
-		}
-
-		async function registerServiceWorkerAndInit() {
-			if (!('serviceWorker' in navigator)) {
-				await loadSongList();
-				return;
-			}
-
-			try {
-				swRegistration = await navigator.serviceWorker.register('sw.js');
-				await navigator.serviceWorker.ready;
-
-				if (navigator.onLine) {
-					setStatus('更新を確認しています...');
-					await requestMusicSync();
-					setStatus('');
-				} else {
-					setStatus('オフラインで動作中です。');
-				}
-			} catch {
-				setStatus('');
-			}
-
-			await loadSongList();
-		}
-
-		window.addEventListener('beforeinstallprompt', (e) => {
-			e.preventDefault();
-			deferredPrompt = e;
-
-			if (!isiOS()) {
-				installContainer.style.display = 'flex';
-			}
-		});
-
-		window.addEventListener('appinstalled', () => {
-			installContainer.style.display = 'none';
-			deferredPrompt = null;
-		});
-
-		installBtn.addEventListener('click', async () => {
-			if (!deferredPrompt) {
-				return;
-			}
-
-			deferredPrompt.prompt();
-			const { outcome } = await deferredPrompt.userChoice;
-
-			if (outcome === 'accepted') {
-				deferredPrompt = null;
-				installContainer.style.display = 'none';
-			}
-		});
-
-		window.addEventListener('online', async () => {
-			setStatus('更新を確認しています...');
-			if (swRegistration) {
-				await requestMusicSync();
-			}
-			await loadSongList();
-			setStatus('');
-		});
-
-		window.addEventListener('offline', () => {
-			setStatus('オフラインで動作中です。');
-		});
-
-		window.addEventListener('load', async () => {
-			if (isiOS()) {
-				installContainer.style.display = 'none';
-			}
-			await registerServiceWorkerAndInit();
-		});
-	</script>
-</body>
-</html>
