@@ -59,13 +59,6 @@ self.addEventListener('fetch', (event) => {
 
     if (url.origin !== scopeUrl.origin) return;
 
-    // --- 【重要】ここを修正：MP3ファイルはキャッシュを介さず直接通信させる ---
-    // これにより、ブラウザ標準の「分割読み込み」機能が正常に動作します
-    if (url.pathname.endsWith('.mp3')) {
-        return; 
-    }
-    // ------------------------------------------------------------------
-
     if (req.mode === 'navigate') {
         event.respondWith(networkFirst(req));
         return;
