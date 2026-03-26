@@ -99,17 +99,92 @@
 	</div>-->
 	</div>
 
+	<script src="https://cdn.jsdelivr.net/npm/dexie@4/dist/dexie.min.js"></script>
 	<script>
 		let deferredPrompt = null;
 		let swRegistration = null;
+		let persistRequested = false;
+		const activeObjectUrls = new Map();
+		const cacheJobs = new Map();
 
 		const container = document.getElementById('playlist');
 		const installContainer = document.getElementById('install-button-container');
 		const installBtn = document.getElementById('install-btn');
 		const statusMessage = document.getElementById('status-message');
+		const db = window.Dexie ? new Dexie('shinshinkai-audio-db') : null;
+		if (db) db.version(1).stores({ tracks: 'id,updatedAt' });
 
 		function isiOS() { return /iPad|iPhone|iPod/.test(navigator.userAgent); }
 		function setStatus(message) { statusMessage.textContent = message || ''; }
+		function getTrackPath(title) { return `musics/${encodeURIComponent(title)}.mp3`; }
+
+		async function requestPersistentStorage() {
+			if (persistRequested) return;
+			persistRequested = true;
+			try {
+				if (navigator.storage?.persist) await navigator.storage.persist();
+			} catch (e) { console.warn('persist request failed', e); }
+		}
+
+		function setAudioToBlob(audioElement, trackId, blob) {
+			const oldUrl = activeObjectUrls.get(trackId);
+			if (oldUrl) URL.revokeObjectURL(oldUrl);
+			const blobUrl = URL.createObjectURL(blob);
+			activeObjectUrls.set(trackId, blobUrl);
+
+			const wasPaused = audioElement.paused;
+			const currentTime = audioElement.currentTime || 0;
+			audioElement.src = blobUrl;
+			audioElement.dataset.cached = 'true';
+			try { if (currentTime > 0) audioElement.currentTime = currentTime; } catch {}
+			if (!wasPaused) audioElement.play().catch(() => {});
+		}
+
+		async function applyCachedTrackIfExists(title, audioElement) {
+			if (!db) return;
+			try {
+				const trackId = getTrackPath(title);
+				const saved = await db.tracks.get(trackId);
+				if (saved?.blob) setAudioToBlob(audioElement, trackId, saved.blob);
+			} catch (e) { console.warn('read from idb failed', e); }
+		}
+
+		async function cacheTrackInBackground(title, audioElement) {
+			if (!db) return;
+			const trackId = getTrackPath(title);
+			if (cacheJobs.has(trackId)) return cacheJobs.get(trackId);
+
+			const job = (async () => {
+				const existing = await db.tracks.get(trackId);
+				if (existing?.blob) {
+					if (audioElement.dataset.cached !== 'true') setAudioToBlob(audioElement, trackId, existing.blob);
+					return;
+				}
+				setStatus('再生中の曲を端末に保存しています...');
+				try {
+					const response = await fetch(trackId, { cache: 'no-store' });
+					if (!response.ok) throw new Error(`download failed: ${response.status}`);
+					const blob = await response.blob();
+					await db.tracks.put({
+						id: trackId,
+						title,
+						blob,
+						mime: blob.type,
+						size: blob.size,
+						updatedAt: Date.now()
+					});
+					setAudioToBlob(audioElement, trackId, blob);
+				} catch (e) {
+					console.error('background cache failed', e);
+				} finally {
+					setStatus('');
+				}
+			})()
+			.finally(() => cacheJobs.delete(trackId));
+
+			cacheJobs.set(trackId, job);
+			return job;
+		}
 
 		const observer = new IntersectionObserver((entries) => {
 			entries.forEach(entry => { if (entry.isIntersecting) entry.target.classList.add('visible'); });
@@ -139,6 +214,13 @@
 			const details = card.querySelector('.lyrics-details');
 			const summary = card.querySelector('.lyrics-summary');
 			const lyricsText = card.querySelector('.lyrics-text');
+			const audio = card.querySelector('audio');
+
+			audio.addEventListener('play', () => {
+				requestPersistentStorage();
+				cacheTrackInBackground(title, audio);
+			});
+			applyCachedTrackIfExists(title, audio);
 
 			details.addEventListener('toggle', async () => {
 				summary.textContent = details.open ? '歌詞を隠す' : '歌詞を表示する';
@@ -194,6 +276,10 @@
 		window.addEventListener('load', registerServiceWorkerAndInit);
 		window.addEventListener('online', () => { setStatus(''); loadSongList(); });
 		window.addEventListener('offline', () => setStatus('オフラインで動作中です。'));
+		window.addEventListener('beforeunload', () => {
+			activeObjectUrls.forEach(url => URL.revokeObjectURL(url));
+			activeObjectUrls.clear();
+		});
 	</script>
 </body>
 </html>
