@@ -95,7 +95,7 @@
 	<div id="install-button-container">
 		<button id="install-btn">アプリ(PWA)としてインストール</button>
 		<div class="install-description">
-			アプリ版では一度再生した曲が保存され、通信費を使わず再生できるようになります
+			一度再生した曲や表示した歌詞は保存され、通信費を使わず再生できます。
 		</div>
 	</div>
 
@@ -192,6 +192,20 @@
 
 		function parseSongList(text) { return text.split(/\r?\n/).map(line => line.trim()).filter(Boolean); }
 
+		async function syncIndexedDbWithSongList(titles) {
+			if (!db) return;
+			try {
+				const validTrackIds = new Set(titles.map(getTrackPath));
+				await db.transaction('rw', db.tracks, async () => {
+					const savedTrackIds = await db.tracks.toCollection().primaryKeys();
+					const staleTrackIds = savedTrackIds.filter(trackId => !validTrackIds.has(trackId));
+					if (staleTrackIds.length) await db.tracks.bulkDelete(staleTrackIds);
+				});
+			} catch (e) {
+				console.warn('idb sync failed', e);
+			}
+		}
+
 		async function loadLyrics(title, lyricsTextElement) {
 			const lyricsPath = `musics/${encodeURIComponent(title)}.txt`;
 			try {
@@ -240,6 +254,7 @@
 				const response = await fetch('musics/index.html');
 				if (!response.ok) throw new Error('曲リストが見つかりません。');
 				const titles = parseSongList(await response.text());
+				await syncIndexedDbWithSongList(titles);
 				titles.length ? titles.forEach(createCard) : container.innerHTML = '<div>曲がありません。</div>';
 			} catch (e) { container.innerHTML = `<div style="color:red;">${e.message}</div>`; }
 		}
