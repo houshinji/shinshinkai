@@ -9,6 +9,7 @@
 	<title>親真会 歌集</title>
 	<style>
 		/* 元の CSS をそのまま継承 */
+		* { box-sizing: border-box; }
 		:root {
 			--bg-color: #121212;
 			--card-bg: #1e1e1e;
@@ -94,6 +95,15 @@
 			font-size: 0.85rem;
 			color: var(--text-sub);
 			margin-top: 40px;
+		}
+
+		@media (max-width: 600px) {
+			body { padding: 20px 12px 90px; }
+			.playlist-container { gap: 20px; }
+			.footer-note {
+				padding: 12px 14px;
+				font-size: 0.78rem;
+			}
 		}
 		.status-message { max-width: 800px; margin: 0 auto 20px auto; text-align: center; color: var(--text-sub); font-size: 0.9rem; min-height: 1.4em; }
 	</style>
