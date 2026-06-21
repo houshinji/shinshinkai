@@ -151,6 +151,18 @@
 		function setStatus(message) { statusMessage.textContent = message || ''; }
 		function getTrackPath(title) { return `musics/${encodeURIComponent(title)}.mp3`; }
 
+		function sendAnalyticsEvent(eventName, title, audioElement, extraParameters = {}) {
+			if (typeof window.gtag !== 'function') return;
+			window.gtag('event', eventName, {
+				song_title: title,
+				song_file: getTrackPath(title),
+				playback_position: Math.floor(audioElement.currentTime || 0),
+				playback_duration: Number.isFinite(audioElement.duration) ? Math.floor(audioElement.duration) : 0,
+				is_cached: audioElement.dataset.cached === 'true',
+				...extraParameters
+			});
+		}
+
 		async function requestPersistentStorage() {
 			if (persistRequested) return;
 			persistRequested = true;
@@ -170,7 +182,12 @@
 			audioElement.src = blobUrl;
 			audioElement.dataset.cached = 'true';
 			try { if (currentTime > 0) audioElement.currentTime = currentTime; } catch {}
-			if (!wasPaused) audioElement.play().catch(() => {});
+			if (!wasPaused) {
+				audioElement.dataset.suppressAnalyticsPlay = 'true';
+				audioElement.play().catch(() => {
+					delete audioElement.dataset.suppressAnalyticsPlay;
+				});
+			}
 		}
 
 		async function applyCachedTrackIfExists(title, audioElement) {
@@ -262,10 +279,24 @@
 			const summary = card.querySelector('.lyrics-summary');
 			const lyricsText = card.querySelector('.lyrics-text');
 			const audio = card.querySelector('audio');
+			let hasStarted = false;
 
 			audio.addEventListener('play', () => {
 				requestPersistentStorage();
 				cacheTrackInBackground(title, audio);
+
+				if (audio.dataset.suppressAnalyticsPlay === 'true') {
+					delete audio.dataset.suppressAnalyticsPlay;
+					return;
+				}
+
+				sendAnalyticsEvent('song_play', title, audio, {
+					play_type: hasStarted ? 'resume' : 'start'
+				});
+				hasStarted = true;
+			});
+			audio.addEventListener('ended', () => {
+				sendAnalyticsEvent('song_complete', title, audio);
 			});
 			applyCachedTrackIfExists(title, audio);
 
