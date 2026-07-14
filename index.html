@@ -145,6 +145,9 @@
 	<div class="sample-link-container">
 		<a href="musics/家原安誠-空の向こうへ.mp4" class="sample-link">▶ 配信動画サンプル(通信が発生します)</a>
 	</div>
+	<div class="sample-link-container">
+		<a href="musics/家原安誠-空の向こうへ2.mp4" class="sample-link">▶ 配信動画サンプル2(通信が発生します)</a>
+	</div>
 	<div id="status-message" class="status-message"></div>
 	<div id="playlist" class="playlist-container"></div>
 
@@ -174,6 +177,12 @@
 		const db = window.Dexie ? new Dexie('shinshinkai-audio-db') : null;
 		if (db) db.version(1).stores({ tracks: 'id,updatedAt' });
 
+		document.querySelectorAll('.sample-link').forEach((link) => {
+			link.addEventListener('click', () => {
+				sendSampleVideoAnalyticsEvent(link.dataset.analyticsTitle || link.textContent.trim(), link.getAttribute('href'));
+			});
+		});
+
 		function setStatus(message) { statusMessage.textContent = message || ''; }
 		function getTrackPath(title) { return `musics/${encodeURIComponent(title)}.mp3`; }
 
@@ -186,6 +195,14 @@
 				playback_duration: Number.isFinite(audioElement.duration) ? Math.floor(audioElement.duration) : 0,
 				is_cached: audioElement.dataset.cached === 'true',
 				...extraParameters
+			});
+		}
+
+		function sendSampleVideoAnalyticsEvent(title, href) {
+			if (typeof window.gtag !== 'function') return;
+			window.gtag('event', 'song_play', {
+				sample_title: title,
+				sample_file: href
 			});
 		}
 
