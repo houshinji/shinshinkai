@@ -172,6 +172,33 @@
 			}
 		}
 		.status-message { max-width: 800px; margin: 0 auto 20px auto; text-align: center; color: var(--text-sub); font-size: 0.9rem; min-height: 1.4em; }
+		.list-message { max-width: 800px; margin: 20px auto 0; text-align: center; color: var(--text-sub); font-size: 0.9rem; }
+		.list-message.error { color: #ff6b6b; }
+
+		/* 曲が並ぶまでの仮置き。実際のカードと同じ形にしておき、入れ替わっても印象が変わらないようにする */
+		.playlist-placeholder { max-width: 800px; margin: 0 auto; display: flex; flex-direction: column; gap: 30px; }
+		/* display:flex は hidden 属性より強いので、明示的に打ち消す */
+		.playlist-placeholder[hidden] { display: none; }
+		.placeholder-note { text-align: center; color: var(--text-sub); font-size: 0.9rem; }
+
+		.placeholder-card {
+			background: var(--card-bg); padding: 20px; border-radius: 16px;
+			border: 1px solid var(--border-color); box-shadow: 0 10px 25px rgba(0,0,0,0.6);
+			display: flex; flex-direction: column; align-items: center; opacity: 0.55;
+		}
+
+		.placeholder-line { display: block; border-radius: 4px; background: #2f2f2f; }
+		.placeholder-title { width: 45%; height: 1em; margin-bottom: 15px; }
+		.placeholder-player { width: 100%; height: 40px; }
+
+		@media (prefers-reduced-motion: no-preference) {
+			.placeholder-line {
+				background: linear-gradient(90deg, #2a2a2a 25%, #3a3a3a 50%, #2a2a2a 75%);
+				background-size: 300% 100%;
+				animation: placeholder-shimmer 1.6s ease-in-out infinite;
+			}
+			@keyframes placeholder-shimmer { from { background-position: 150% 0; } to { background-position: -150% 0; } }
+		}
 	</style>
 </head>
 <body>
@@ -194,6 +221,16 @@
 	</details>
 	<div id="status-message" class="status-message"></div>
 	<div id="playlist" class="playlist-container"></div>
+	<!-- 最初の描画から見えるよう HTML に直接置く。JS(と外部ライブラリ)の読み込みを
+	     待つ間こそ画面が空になるので、ここを JS で作ると間に合わない。
+	     一覧が並んだ時点、または結果が確定した時点で JS が隠す。 -->
+	<div id="playlist-placeholder" class="playlist-placeholder">
+		<div class="placeholder-note">曲を読み込んでいます...</div>
+		<div class="placeholder-card" aria-hidden="true"><span class="placeholder-line placeholder-title"></span><span class="placeholder-line placeholder-player"></span></div>
+		<div class="placeholder-card" aria-hidden="true"><span class="placeholder-line placeholder-title"></span><span class="placeholder-line placeholder-player"></span></div>
+		<div class="placeholder-card" aria-hidden="true"><span class="placeholder-line placeholder-title"></span><span class="placeholder-line placeholder-player"></span></div>
+	</div>
+	<div id="list-message" class="list-message" hidden></div>
 
 	<div id="install-button-container">
 		<button id="install-btn">アプリ(PWA)としてインストール</button>
@@ -215,8 +252,13 @@
 		let persistRequested = false;
 		const activeObjectUrls = new Map();
 		const cacheJobs = new Map();
+		// 画面に出ている曲名 → カード要素。並べ替えのときにカードを作り直さないための対応表。
+		const renderedCards = new Map();
+		const SONG_LIST_STORAGE_KEY = 'shinshinkai-song-list';
 
 		const container = document.getElementById('playlist');
+		const listMessage = document.getElementById('list-message');
+		const playlistPlaceholder = document.getElementById('playlist-placeholder');
 		const installContainer = document.getElementById('install-button-container');
 		const installBtn = document.getElementById('install-btn');
 		const installManual = document.getElementById('install-manual');
@@ -232,6 +274,37 @@
 
 		function setStatus(message) { statusMessage.textContent = message || ''; }
 		function getTrackPath(title) { return `musics/${encodeURIComponent(title)}.mp3`; }
+
+		// 曲が並んだ時点、または結果が確定した時点で仮置きを下げる。
+		function hidePlaylistPlaceholder() {
+			if (playlistPlaceholder) playlistPlaceholder.hidden = true;
+		}
+
+		function setListMessage(message, isError) {
+			listMessage.textContent = message || '';
+			listMessage.classList.toggle('error', Boolean(isError));
+			listMessage.hidden = !message;
+		}
+
+		// 前回表示できた曲名を控えておき、次に開いたときは通信を待たずに一覧を組み立てる。
+		function readStoredSongList() {
+			try {
+				const stored = JSON.parse(localStorage.getItem(SONG_LIST_STORAGE_KEY) || '[]');
+				return Array.isArray(stored) ? stored.filter(title => typeof title === 'string' && title) : [];
+			} catch { return []; }
+		}
+
+		function storeSongList(titles) {
+			try { localStorage.setItem(SONG_LIST_STORAGE_KEY, JSON.stringify(titles)); } catch {}
+		}
+
+		// 通信エラーの message はブラウザ既定の英文(Failed to fetch など)なので画面には出せない。
+		// 自分で投げたものだけ userMessage を持たせて、そのまま見せてよい印にする。
+		function songListError(message) {
+			const error = new Error(message);
+			error.userMessage = message;
+			return error;
+		}
 
 		function sendAnalyticsEvent(eventName, title, audioElement, extraParameters = {}) {
 			if (typeof window.gtag !== 'function') return;
@@ -401,39 +474,85 @@
 					lyricsText.dataset.loaded = 'true';
 				}
 			});
-			container.appendChild(card);
 			observer.observe(card);
+			return card;
+		}
+
+		function discardCard(title) {
+			const trackId = getTrackPath(title);
+			const objectUrl = activeObjectUrls.get(trackId);
+			if (objectUrl) {
+				URL.revokeObjectURL(objectUrl);
+				activeObjectUrls.delete(trackId);
+			}
+			renderedCards.get(title)?.remove();
+			renderedCards.delete(title);
+		}
+
+		// 一覧をまるごと作り直すと高さが変わってスクロール位置が飛ぶので、
+		// 既にあるカードは使い回して過不足だけを直す。並び順もその場で入れ替える。
+		// カードは曲名だけで完成する(音声は preload="none")ため、通信を待つ必要がない。
+		function renderSongList(titles) {
+			const wanted = [];
+			const seen = new Set();
+			titles.forEach(title => {
+				if (seen.has(title)) return;
+				seen.add(title);
+				wanted.push(title);
+			});
+
+			[...renderedCards.keys()].forEach(title => { if (!seen.has(title)) discardCard(title); });
+
+			wanted.forEach((title, index) => {
+				let card = renderedCards.get(title);
+				if (!card) {
+					card = createCard(title);
+					renderedCards.set(title, card);
+				}
+				const atIndex = container.children[index];
+				if (atIndex !== card) container.insertBefore(card, atIndex || null);
+			});
+
+			if (wanted.length) hidePlaylistPlaceholder();
 		}
 
 		async function loadSongList() {
-			// 古い ObjectURL を解放してメモリリークを防ぐ
-			activeObjectUrls.forEach(url => URL.revokeObjectURL(url));
-			activeObjectUrls.clear();
-
-			container.innerHTML = '';
 			try {
-				const response = await fetch('musics/index.html');
-				if (!response.ok) throw new Error('曲リストが見つかりません。');
+				// no-store: GitHub Pages は max-age を付けて返すので、ブラウザのキャッシュから
+				// 古い一覧が返らないようにする。SW 側も曲リストだけは NetworkOnly にしてある。
+				// ここを通った一覧だけが localStorage に入るので、控えが古くなることはあっても
+				// 「通信で取れた古い一覧」が最新として保存されることはない。
+				const response = await fetch('musics/index.html', { cache: 'no-store' });
+				if (!response.ok) throw songListError('曲リストが見つかりません。');
 				const titles = parseSongList(await response.text());
+				storeSongList(titles);
+				renderSongList(titles);
+				setListMessage(titles.length ? '' : '曲がありません。');
 				await syncIndexedDbWithSongList(titles);
-				titles.length ? titles.forEach(createCard) : container.innerHTML = '<div>曲がありません。</div>';
-			} catch (e) { container.innerHTML = `<div style="color:red;">${e.message}</div>`; }
+			} catch (e) {
+				console.error('song list load failed', e);
+				// 先に並べたカードは消さない。取得できなくても前回の一覧から再生できる。
+				if (renderedCards.size) {
+					setListMessage('最新の曲リストを取得できませんでした。前回の一覧を表示しています。');
+				} else {
+					setListMessage(e.userMessage || '曲リストを取得できませんでした。通信状態をご確認ください。', true);
+				}
+			} finally {
+				// 成否が決まったら仮置きは役目を終える。失敗時は下のメッセージが理由を伝える。
+				hidePlaylistPlaceholder();
+			}
 		}
 
-		async function registerServiceWorkerAndInit() {
-			if ('serviceWorker' in navigator) {
-				try {
-					swRegistration = await navigator.serviceWorker.register('sw.js');
-					await navigator.serviceWorker.ready;
-					if (navigator.onLine) {
-						setStatus('更新を確認しています...');
-						const controller = navigator.serviceWorker.controller || swRegistration.active;
-						if (controller) controller.postMessage({ type: 'SYNC_MUSICS' });
-						setStatus('');
-					}
-				} catch (e) { console.error(e); }
-			}
-			await loadSongList();
+		async function registerServiceWorker() {
+			if (!('serviceWorker' in navigator)) return;
+			try {
+				swRegistration = await navigator.serviceWorker.register('sw.js');
+				await navigator.serviceWorker.ready;
+				if (navigator.onLine) {
+					const controller = navigator.serviceWorker.controller || swRegistration.active;
+					if (controller) controller.postMessage({ type: 'SYNC_MUSICS' });
+				}
+			} catch (e) { console.error(e); }
 		}
 
 		let installCompleted = false;
@@ -490,7 +609,15 @@
 			}
 		});
 
-		window.addEventListener('load', registerServiceWorkerAndInit);
+		// 前回の一覧を最初の描画前に並べてしまう。ここまで通信は一切発生しないので、
+		// 回線が遅くても曲名とプレーヤーはすぐ出る。取得できた最新の一覧との差分は後から反映する。
+		// 控えがあればここで仮置きと入れ替わる。無ければ HTML の仮置きがそのまま残り、
+		// 取得の成否が決まった時点で下がる。
+		renderSongList(readStoredSongList());
+		// SW の登録完了を待たずに取りに行く。登録が遅くても一覧の更新は止まらない。
+		loadSongList();
+		registerServiceWorker();
+
 		window.addEventListener('online', () => { setStatus(''); loadSongList(); });
 		window.addEventListener('offline', () => setStatus('オフラインで動作中です。'));
 		window.addEventListener('beforeunload', () => {

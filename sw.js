@@ -8,11 +8,11 @@ if (workbox) {
     self.addEventListener('install', (event) => {
         event.waitUntil(
             caches.open('static-assets').then((cache) => {
+                // 曲リストは意図的に入れない。下の NetworkOnly ルートで扱うため読まれない。
                 return cache.addAll([
                     'index.html',
                     'manifest.json',
-                    'favicon.svg',
-                    'musics/index.html'
+                    'favicon.svg'
                 ]);
             })
         );
@@ -35,21 +35,39 @@ if (workbox) {
         })
     );
 
-    // 2. 歌詞ファイルなど
+    // 2. 曲リストだけは絶対にキャッシュを返さない。
+    // NetworkFirst 系はキャッシュから返しても response.ok が true になり、
+    // アプリ側からは最新と区別できない。古い一覧を最新として扱ってしまうと、
+    // 曲を入れ替えたことが利用者に伝わらないまま固定されてしまう。
+    // 取得できなかったときの控えはアプリが localStorage で持っていて、
+    // そちらは「前回の一覧」と明示して出すので、黙って古いものを見せることがない。
+    workbox.routing.registerRoute(
+        ({ url }) => url.pathname.endsWith('/musics/index.html'),
+        new workbox.strategies.NetworkOnly()
+    );
+
+    // 3. 歌詞ファイルなど
+    // 既存曲の歌詞はめったに変わらず、開いた時に待たされる方が体感が悪いので、
+    // こちらは 3 秒で見切ってキャッシュを使う。変更は次に開いたときに反映される。
     workbox.routing.registerRoute(
         ({ url }) => url.pathname.includes('/musics/') && !url.pathname.endsWith('.mp3'),
         new workbox.strategies.NetworkFirst({
-            cacheName: 'musics-meta-cache'
+            cacheName: 'musics-meta-cache',
+            networkTimeoutSeconds: 3
         })
     );
 
-    // 3. 基本アセット
+    // 4. 基本アセット
+    // index.html 自体もここを通る。回線が遅いと応答待ちで真っ白なままになるので、
+    // こちらも 3 秒で見切ってキャッシュの画面を先に出す。
+    // 古い画面が出ても曲リストは実行時に取り直すので、曲の入れ替えは反映される。
     workbox.routing.registerRoute(
-        ({ request }) => 
+        ({ request }) =>
             ['document', 'style', 'script', 'image'].includes(request.destination) ||
             request.url.includes('manifest.json'),
         new workbox.strategies.NetworkFirst({
-            cacheName: 'static-assets'
+            cacheName: 'static-assets',
+            networkTimeoutSeconds: 3
         })
     );
 
