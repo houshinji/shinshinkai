@@ -98,9 +98,44 @@
 		#install-manual strong { color: var(--text-main); }
 		#install-manual .install-note { display: block; margin-bottom: 12px; color: var(--text-main); }
 
-		.sample-link-container {
+		.sample-menu {
+			max-width: 800px;
+			margin: 0 auto 30px;
+			padding: 0;
+			border-top: none;
 			text-align: center;
-			margin-bottom: 20px;
+		}
+
+		.sample-menu-summary {
+			display: inline-block;
+			padding: 10px 28px;
+			border: 1px solid var(--accent-color);
+			border-radius: 999px;
+			background: rgba(212, 175, 55, 0.12);
+			color: var(--accent-color);
+			font-size: 1rem;
+			font-weight: 600;
+			letter-spacing: 0.08em;
+			cursor: pointer;
+			list-style: none;
+			transition: background 0.2s ease, transform 0.2s ease;
+		}
+
+		.sample-menu-summary::-webkit-details-marker { display: none; }
+		.sample-menu-summary::after { content: " \25BE"; }
+		.sample-menu[open] .sample-menu-summary::after { content: " \25B4"; }
+
+		.sample-menu-summary:hover {
+			background: rgba(212, 175, 55, 0.22);
+			transform: translateY(-1px);
+		}
+
+		.sample-menu-body {
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			gap: 12px;
+			margin-top: 16px;
 		}
 
 		.sample-link {
@@ -154,12 +189,13 @@
 	gtag('config', 'G-Z8RN957LC9');
 	</script>
 	<h1>親真会 歌集</h1>
-	<div class="sample-link-container">
-		<a href="musics/家原安誠-空の向こうへ.mp4" class="sample-link">▶ 配信動画サンプル(通信が発生します)</a>
-	</div>
-	<div class="sample-link-container">
-		<a href="musics/家原安誠-空の向こうへ2.mp4" class="sample-link">▶ 配信動画サンプル2(通信が発生します)</a>
-	</div>
+	<details class="sample-menu">
+		<summary class="sample-menu-summary">サンプル</summary>
+		<div class="sample-menu-body">
+			<a href="musics/家原安誠-空の向こうへ.mp4" class="sample-link" data-analytics-title="配信動画サンプル1">▶ 配信動画サンプル(通信が発生します)</a>
+			<a href="musics/家原安誠-空の向こうへ2.mp4" class="sample-link" data-analytics-title="配信動画サンプル2">▶ 配信動画サンプル2(通信が発生します)</a>
+		</div>
+	</details>
 	<div id="status-message" class="status-message"></div>
 	<div id="playlist" class="playlist-container"></div>
 
@@ -213,11 +249,14 @@
 			});
 		}
 
+		// サンプル動画も曲と同じ song_play で送る。song_title / song_file が
+		// 曲と揃うので、GA 側で 2 つのサンプルをそれぞれ判別できる。
 		function sendSampleVideoAnalyticsEvent(title, href) {
 			if (typeof window.gtag !== 'function') return;
 			window.gtag('event', 'song_play', {
-				sample_title: title,
-				sample_file: href
+				song_title: title,
+				song_file: href,
+				play_type: 'sample'
 			});
 		}
 
