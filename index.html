@@ -86,6 +86,18 @@
 
 		.install-description { margin-top: 10px; font-size: 0.85rem; color: var(--text-sub); text-align: center; line-height: 1.6; max-width: 300px; }
 
+		#install-btn:disabled { opacity: 0.6; cursor: default; box-shadow: none; }
+
+		#install-manual {
+			display: none; max-width: 360px; margin: 40px auto; padding: 14px 16px;
+			background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px;
+			color: var(--text-sub); font-size: 0.85rem; line-height: 1.9; text-align: left;
+		}
+
+		#install-manual b { color: var(--accent-color); display: block; margin-bottom: 6px; }
+		#install-manual strong { color: var(--text-main); }
+		#install-manual .install-note { display: block; margin-bottom: 12px; color: var(--text-main); }
+
 		.sample-link-container {
 			text-align: center;
 			margin-bottom: 20px;
@@ -158,6 +170,8 @@
 		</div>
 	</div>
 
+	<div id="install-manual"></div>
+
 	<div class="footer-note">
 		一度再生した曲や表示した歌詞は保存され、通信費を使わず再生できます。
 	</div>
@@ -173,6 +187,7 @@
 		const container = document.getElementById('playlist');
 		const installContainer = document.getElementById('install-button-container');
 		const installBtn = document.getElementById('install-btn');
+		const installManual = document.getElementById('install-manual');
 		const statusMessage = document.getElementById('status-message');
 		const db = window.Dexie ? new Dexie('shinshinkai-audio-db') : null;
 		if (db) db.version(1).stores({ tracks: 'id,updatedAt' });
@@ -386,17 +401,72 @@
 			await loadSongList();
 		}
 
+		let installCompleted = false;
+
+		function isAppInstalled() {
+			return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+		}
+
+		function getInstallGuide() {
+			const ua = navigator.userAgent;
+			if (/Line\/|FBAN|FBAV|Instagram|Twitter|MicroMessenger/i.test(ua)) {
+				return '<b>この画面ではインストールできません</b>LINE などのアプリ内ブラウザには、インストール機能がありません。画面右上のメニューから<strong>「ブラウザで開く」(Chrome / Safari)</strong>を選び、開き直してからもう一度お試しください。';
+			}
+			if (/iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) {
+				return '<b>ホーム画面に追加する方法</b>Safari の共有ボタン(□に↑)をタップし、<strong>「ホーム画面に追加」</strong>を選んでください。';
+			}
+			return '<b>ホーム画面に追加する方法</b>Chrome の右上「⋮」メニューから<strong>「アプリをインストール」</strong>または<strong>「ホーム画面に追加」</strong>を選んでください。項目が出ない場合は、すでにインストール済みの可能性があります。';
+		}
+
+		function showManualInstall(note) {
+			if (installCompleted || isAppInstalled()) return;
+			installManual.innerHTML = (note ? '<span class="install-note">' + note + '</span>' : '') + getInstallGuide();
+			installManual.style.display = 'block';
+		}
+
 		window.addEventListener('beforeinstallprompt', (e) => {
 			e.preventDefault();
 			deferredPrompt = e;
+			installManual.style.display = 'none';
 			installContainer.style.display = 'flex';
 		});
 
+		window.addEventListener('appinstalled', () => {
+			installCompleted = true;
+			deferredPrompt = null;
+			installContainer.style.display = 'none';
+			installManual.style.display = 'none';
+		});
+
 		installBtn.addEventListener('click', async () => {
-			if (!deferredPrompt) return;
-			deferredPrompt.prompt();
-			const { outcome } = await deferredPrompt.userChoice;
-			if (outcome === 'accepted') { deferredPrompt = null; installContainer.style.display = 'none'; }
+			// prompt() は 1 つの beforeinstallprompt イベントにつき 1 回しか呼べない。
+			// 先に取り出して null にし、使い回して InvalidStateError で無反応になるのを防ぐ。
+			const promptEvent = deferredPrompt;
+			deferredPrompt = null;
+			if (!promptEvent) { showManualInstall(); return; }
+			installBtn.disabled = true;
+			try {
+				await promptEvent.prompt();
+				const { outcome } = await promptEvent.userChoice;
+				installContainer.style.display = 'none';
+				if (outcome === 'accepted') {
+					installCompleted = true;
+					installManual.style.display = 'none';
+				} else {
+					showManualInstall('インストールをキャンセルしました。ボタンからやり直す場合は、ページを再読み込みしてください。');
+				}
+			} catch (error) {
+				console.error('PWA install failed', error);
+				installContainer.style.display = 'none';
+				showManualInstall('インストールを開始できませんでした。');
+			} finally {
+				installBtn.disabled = false;
+			}
+		});
+
+		// beforeinstallprompt が発火しない環境(アプリ内ブラウザ・iOS・SW 登録失敗など)向けの手動案内
+		window.addEventListener('load', () => {
+			setTimeout(() => { if (!deferredPrompt) showManualInstall(); }, 4000);
 		});
 
 		window.addEventListener('load', registerServiceWorkerAndInit);
