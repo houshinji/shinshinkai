@@ -94,10 +94,6 @@
 			color: var(--text-sub); font-size: 0.85rem; line-height: 1.9; text-align: left;
 		}
 
-		#install-manual b { color: var(--accent-color); display: block; margin-bottom: 6px; }
-		#install-manual strong { color: var(--text-main); }
-		#install-manual .install-note { display: block; margin-bottom: 12px; color: var(--text-main); }
-
 		.sample-menu {
 			max-width: 800px;
 			margin: 0 auto 30px;
@@ -446,20 +442,11 @@
 			return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
 		}
 
-		function getInstallGuide() {
-			const ua = navigator.userAgent;
-			if (/Line\/|FBAN|FBAV|Instagram|Twitter|MicroMessenger/i.test(ua)) {
-				return '<b>この画面ではインストールできません</b>LINE などのアプリ内ブラウザには、インストール機能がありません。画面右上のメニューから<strong>「ブラウザで開く」(Chrome / Safari)</strong>を選び、開き直してからもう一度お試しください。';
-			}
-			if (/iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) {
-				return '<b>ホーム画面に追加する方法</b>Safari の共有ボタン(□に↑)をタップし、<strong>「ホーム画面に追加」</strong>を選んでください。';
-			}
-			return '<b>ホーム画面に追加する方法</b>Chrome の右上「⋮」メニューから<strong>「アプリをインストール」</strong>または<strong>「ホーム画面に追加」</strong>を選んでください。項目が出ない場合は、すでにインストール済みの可能性があります。';
-		}
-
+		// ブラウザごとの操作手順は案内しない(メニューの位置も項目名もバージョンで変わるため)。
+		// ここで出すのはインストール操作の結果だけ。
 		function showManualInstall(note) {
-			if (installCompleted || isAppInstalled()) return;
-			installManual.innerHTML = (note ? '<span class="install-note">' + note + '</span>' : '') + getInstallGuide();
+			if (installCompleted || isAppInstalled() || !note) return;
+			installManual.textContent = note;
 			installManual.style.display = 'block';
 		}
 
@@ -482,7 +469,7 @@
 			// 先に取り出して null にし、使い回して InvalidStateError で無反応になるのを防ぐ。
 			const promptEvent = deferredPrompt;
 			deferredPrompt = null;
-			if (!promptEvent) { showManualInstall(); return; }
+			if (!promptEvent) { showManualInstall('インストールを開始できませんでした。ページを再読み込みしてから、もう一度お試しください。'); return; }
 			installBtn.disabled = true;
 			try {
 				await promptEvent.prompt();
@@ -501,11 +488,6 @@
 			} finally {
 				installBtn.disabled = false;
 			}
-		});
-
-		// beforeinstallprompt が発火しない環境(アプリ内ブラウザ・iOS・SW 登録失敗など)向けの手動案内
-		window.addEventListener('load', () => {
-			setTimeout(() => { if (!deferredPrompt) showManualInstall(); }, 4000);
 		});
 
 		window.addEventListener('load', registerServiceWorkerAndInit);
